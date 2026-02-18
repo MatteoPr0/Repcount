@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gym Log</title>
+  <meta name="theme-color" content="#111111" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <button id="btnBack" class="iconbtn" aria-label="Indietro" style="display:none;">←</button>
+    <h1 id="title">Registro</h1>
+    <div class="spacer"></div>
+    <button id="btnExport" class="iconbtn" aria-label="Export">⤓</button>
+    <label class="iconbtn" aria-label="Import">
+      ⤒
+      <input id="fileImport" type="file" accept="application/json" hidden>
+    </label>
+  </header>
+
+  <main id="app"></main>
+
+  <button id="fab" class="fab" aria-label="Nuovo allenamento">＋</button>
+
+  <nav class="bottomnav" aria-label="Navigazione">
+    <button class="navbtn" data-nav="list" aria-current="page">📒<span>Registra</span></button>
+    <button class="navbtn" data-nav="stats">📊<span>Statistiche</span></button>
+    <button class="navbtn" data-nav="settings">⚙️<span>Impostazioni</span></button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>
