@@ -199,6 +199,12 @@ const deepClone = (obj) => {
     };
 
     function App() {
+
+            // Flag mount per debug overlay
+            useEffect(() => {
+                try { window.__AF_APP_MOUNTED__ = true; } catch(e) {}
+            }, []);
+
       const [activeTab, setActiveTab] = useState('home');
       const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('af_v57_h') || '[]'));
 
@@ -1016,6 +1022,56 @@ const finishWorkout = () => {
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
+        
+        // PWA: Service Worker update strategy (no need to clear app/data)
+        (function(){
+            if (!('serviceWorker' in navigator)) return;
+            window.__AF_SW_UPDATE_READY__ = false;
+
+            function showUpdateToast(){
+                // Minimal toast
+                var id = '__af_update__';
+                if (document.getElementById(id)) return;
+                var el = document.createElement('div');
+                el.id = id;
+                el.style.cssText = 'position:fixed;left:12px;right:12px;bottom:84px;z-index:99998;background:rgba(0,0,0,0.88);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:12px 14px;border-radius:16px;font:12px/1.4 system-ui;display:flex;align-items:center;justify-content:space-between;gap:10px;';
+                el.innerHTML = '<div style="font-weight:700">Aggiornamento disponibile</div><button id="__af_reload__" style="background:#6366f1;border:0;color:#fff;font-weight:800;padding:8px 10px;border-radius:12px">Riavvia</button>';
+                document.body.appendChild(el);
+                document.getElementById('__af_reload__').onclick = function(){ location.reload(); };
+            }
+
+            navigator.serviceWorker.register('./service-worker.js').then(function(reg){
+                // If there's an already waiting SW, show toast
+                if (reg.waiting) {
+                    window.__AF_SW_UPDATE_READY__ = true;
+                    showUpdateToast();
+                }
+                reg.addEventListener('updatefound', function(){
+                    var nw = reg.installing;
+                    if (!nw) return;
+                    nw.addEventListener('statechange', function(){
+                        if (nw.state === 'installed') {
+                            // If we already have a controller, it's an update
+                            if (navigator.serviceWorker.controller) {
+                                window.__AF_SW_UPDATE_READY__ = true;
+                                showUpdateToast();
+                            }
+                        }
+                    });
+                });
+            }).catch(function(e){
+                console.log('SW register failed', e);
+            });
+
+            // If SW takes control (after skipWaiting + claim), reload once
+            var reloaded = false;
+            navigator.serviceWorker.addEventListener('controllerchange', function(){
+                if (reloaded) return;
+                reloaded = true;
+                location.reload();
+            });
+        })();
+
   </script>
 
   <script>
