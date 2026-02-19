@@ -1,16 +1,14 @@
-/* AuraFit Service Worker (v152)
+/* PasseFIT Service Worker
    Strategy:
    - index.html / navigations: network-first (fresh), fallback to cache (offline)
    - other same-origin assets: cache-first
-   - versioned cache + automatic cleanup (no need to clear app or lose data)
 */
-const CACHE_NAME = 'aurafit-cache-v154';
+const CACHE_NAME = 'passefit-cache-v1';
 const PRECACHE = ['./', './index.html', './manifest.json', './service-worker.js', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './apple-touch-icon.png', './favicon-16.png', './favicon-32.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    // Cache core shell (best effort)
     await cache.addAll(PRECACHE);
     self.skipWaiting();
   })());
@@ -34,10 +32,8 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // Only handle same-origin
   if (url.origin !== self.location.origin) return;
 
-  // Network-first for navigations / index.html
   if (isNavigationRequest(req) || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/')) {
     event.respondWith((async () => {
       try {
@@ -48,7 +44,6 @@ self.addEventListener('fetch', (event) => {
       } catch (e) {
         const cached = await caches.match(req);
         if (cached) return cached;
-        // fallback to cached index.html
         const cachedIndex = await caches.match('./index.html');
         return cachedIndex || Response.error();
       }
@@ -56,14 +51,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for other requests (GET only)
   if (req.method !== 'GET') return;
 
   event.respondWith((async () => {
     const cached = await caches.match(req);
     if (cached) return cached;
     const res = await fetch(req);
-    // Cache successful basic responses only
     try {
       if (res && res.ok && res.type === 'basic') {
         const cache = await caches.open(CACHE_NAME);
