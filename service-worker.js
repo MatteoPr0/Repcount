@@ -1,7 +1,7 @@
 /* AuraFit Service Worker (simple precache) */
-const CACHE_NAME = 'aurafit-cache-v3';
+const CACHE_NAME = 'aurafit-cache-v4';
 const PRECACHE_URLS = [
-  './index.html?ver=7',
+  './index.html?ver=8',
   './',
   './index.html',
   './manifest.json',

@@ -2,7 +2,7 @@
   "name": "AuraFit",
   "short_name": "AuraFit",
   "description": "Gym log ultra-rapido con timer recuperi, note e backup locale.",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#020202",
@@ -27,5 +27,6 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "id": "./"
 }
