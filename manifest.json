@@ -1,0 +1,31 @@
+{
+  "name": "AuraFit",
+  "short_name": "AuraFit",
+  "description": "Gym log ultra-rapido con timer recuperi, note e backup locale.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#020202",
+  "theme_color": "#020202",
+  "lang": "it-IT",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

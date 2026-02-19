@@ -1,35 +1,566 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gym Log</title>
-  <meta name="theme-color" content="#111111" />
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Aura Fit - Clinical OS</title>
+
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+
+
+  <!-- PWA Meta Tags -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#020202">
+  <link rel="icon" href="./favicon-32.png">
+
+  <!-- Dependencies (CDN) -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Avoid @latest for stability -->
+  <script src="https://unpkg.com/lucide@0.542.0"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root { --bg: #020202; --primary: #6366f1; --warmup: #f59e0b; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg); color: white; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+
+    .glass { background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 1.8rem; }
+    .pill-nav { background: rgba(10, 10, 10, 0.92); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.15); border-radius: 3rem; }
+
+    input::-webkit-inner-spin-button, input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+    .view-animate { animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    input:focus, textarea:focus { border-color: var(--primary) !important; background: rgba(99, 102, 241, 0.2) !important; }
+
+    .type-toggle { width: 32px; height: 32px; border-radius: 8px; font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.1); }
+    .type-toggle.type-a { background: rgba(99, 102, 241, 0.15); color: var(--primary); }
+    .type-toggle.type-w { background: rgba(245, 158, 11, 0.15); color: var(--warmup); }
+
+    .check-box { width: 32px; height: 32px; border: 2px solid rgba(255,255,255,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .check-box.checked { background: var(--primary); border-color: var(--primary); box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); }
+
+    .auto-expand { min-height: 36px; height: auto; resize: none; overflow: hidden; display: block; line-height: 1.4; transition: height 0.1s ease; }
+  </style>
 </head>
 <body>
-  <header class="topbar">
-    <button id="btnBack" class="iconbtn" aria-label="Indietro" style="display:none;">←</button>
-    <h1 id="title">Registro</h1>
-    <div class="spacer"></div>
-    <button id="btnExport" class="iconbtn" aria-label="Export">⤓</button>
-    <label class="iconbtn" aria-label="Import">
-      ⤒
-      <input id="fileImport" type="file" accept="application/json" hidden>
-    </label>
-  </header>
+  <div id="root"></div>
 
-  <main id="app"></main>
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
 
-  <button id="fab" class="fab" aria-label="Nuovo allenamento">＋</button>
+    const Icon = ({ name, size = 24, className = "" }) => {
+      return <i data-lucide={name} style={{ width: size, height: size }} className={`${className} inline-block`} />;
+    };
 
-  <nav class="bottomnav" aria-label="Navigazione">
-    <button class="navbtn" data-nav="list" aria-current="page">📒<span>Registra</span></button>
-    <button class="navbtn" data-nav="stats">📊<span>Statistiche</span></button>
-    <button class="navbtn" data-nav="settings">⚙️<span>Impostazioni</span></button>
-  </nav>
+    const INITIAL_LIB = {
+      "Petto": ["Panca Piana Bilanciere", "Panca Inclinata Bilanciere", "Chest Press", "Dips", "Croci ai Cavi", "Pec Deck"],
+      "Dorso": ["Trazioni Wide", "Lat Machine Wide", "Rematore Bilanciere", "Pulley Basso", "Stacchi da Terra", "Rack Pull"],
+      "Gambe": ["Squat", "Leg Press 45°", "Leg Extension", "Leg Curl", "RDL", "Hip Thrust", "Affondi Bulgari"],
+      "Spalle": ["Military Press", "Overhead Press Manubri", "Lento Avanti Seduto", "Alzate Laterali", "Facepull", "Alzate a 90°"],
+      "Bicipiti": ["Curl Bilanciere", "Curl Alternato", "Curl Martello", "Curl alla Scott"],
+      "Tricipiti": ["Pushdown", "French Press", "Estensioni Dietro Nuca", "Panca Stretta"],
+      "Addominali": ["Crunch", "Leg Raise", "Plank", "Russian Twist"]
+    };
 
-  <script src="app.js"></script>
+    const MUSCLE_MAP = {};
+    Object.entries(INITIAL_LIB).forEach(([cat, list]) => list.forEach(ex => MUSCLE_MAP[ex] = cat));
+
+    const toNum = (x) => {
+      if (x === null || x === undefined || x === '') return NaN;
+      const n = Number(String(x).replace(',', '.'));
+      return Number.isFinite(n) ? n : NaN;
+    };
+
+    const deepClone = (obj) => {
+      if (typeof structuredClone === 'function') return structuredClone(obj);
+      return JSON.parse(JSON.stringify(obj));
+    };
+
+    const EtherInput = ({ initialValue, onCommit, ghost, className = "" }) => {
+      const [localVal, setLocalVal] = useState(initialValue || '');
+      useEffect(() => { setLocalVal(initialValue || ''); }, [initialValue]);
+      return (
+        <input
+          type="number" inputMode="decimal" value={localVal} placeholder={ghost || '--'}
+          onBlur={() => onCommit(localVal)}
+          onChange={(e) => setLocalVal(e.target.value)}
+          className={`${className} bg-white/[0.08] border border-white/[0.12] rounded-lg py-2 text-center text-sm font-bold text-white focus:border-indigo-400 outline-none w-full shadow-inner transition-all placeholder:text-white/10`}
+        />
+      );
+    };
+
+    const NoteArea = ({ initialValue, onCommit, ghost, className = "" }) => {
+      const [localVal, setLocalVal] = useState(initialValue || '');
+      const textareaRef = useRef(null);
+
+      useEffect(() => { setLocalVal(initialValue || ''); }, [initialValue]);
+
+      const adjustHeight = () => {
+        const el = textareaRef.current;
+        if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+      };
+      useEffect(() => { adjustHeight(); }, [localVal]);
+
+      return (
+        <textarea
+          ref={textareaRef} rows="1" value={localVal} placeholder={ghost || "..."}
+          onBlur={() => onCommit(localVal)}
+          onChange={(e) => setLocalVal(e.target.value)}
+          className={`${className} auto-expand bg-white/[0.04] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-400 outline-none w-full transition-all placeholder:text-white/10`}
+        />
+      );
+    };
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('home');
+      const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('af_v57_h') || '[]'));
+      const [routines, setRoutines] = useState(() => JSON.parse(localStorage.getItem('af_v57_r') || '[]'));
+      const [customs, setCustoms] = useState(() => JSON.parse(localStorage.getItem('af_v57_c') || '{}'));
+      const [activeWorkout, setActiveWorkout] = useState(() => JSON.parse(localStorage.getItem('af_v57_aw') || 'null'));
+
+      const [isTimerOpen, setIsTimerOpen] = useState(false);
+      const [timerVal, setTimerVal] = useState(0);
+      const timerEndTimeRef = useRef(null);
+
+      const [modal, setModal] = useState({ type: null, mode: null, routineExs: [], confirmAction: null });
+      const [searchQuery, setSearchQuery] = useState('');
+      const [expandedCats, setExpandedCats] = useState({});
+      const [sessionDuration, setSessionDuration] = useState("00:00:00");
+
+      const fileInputRef = useRef(null);
+      const toggleCat = (cat) => setExpandedCats(prev => ({ ...prev, [cat]: !prev[cat] }));
+
+      useEffect(() => {
+        localStorage.setItem('af_v57_h', JSON.stringify(history));
+        localStorage.setItem('af_v57_r', JSON.stringify(routines));
+        localStorage.setItem('af_v57_c', JSON.stringify(customs));
+        localStorage.setItem('af_v57_aw', JSON.stringify(activeWorkout));
+      }, [history, routines, customs, activeWorkout]);
+
+      // lucide icons: avoid every render
+      useEffect(() => {
+        if (window.lucide) window.lucide.createIcons();
+      }, [activeTab, modal.type, activeWorkout, searchQuery]);
+
+      // Ghost cache (O(1) lookup)
+      const lastByExercise = useMemo(() => {
+        const map = new Map();
+        for (let i = history.length - 1; i >= 0; i--) {
+          const h = history[i];
+          for (const ex of (h.exercises || [])) {
+            const key = (ex.name || '').trim().toLowerCase();
+            if (!key) continue;
+            if (!map.has(key)) map.set(key, ex);
+          }
+        }
+        return map;
+      }, [history]);
+
+      const getGhostSet = (exName, setIdx) => {
+        const key = (exName || '').trim().toLowerCase();
+        const ex = lastByExercise.get(key);
+        return ex?.sets?.[setIdx] || null;
+      };
+
+      const getGhostExerciseNotes = (exName) => {
+        const key = (exName || '').trim().toLowerCase();
+        const ex = lastByExercise.get(key);
+        return ex?.notes || null;
+      };
+
+      const updateSessionTime = () => {
+        if (activeWorkout && activeWorkout.startTime) {
+          const diff = Date.now() - activeWorkout.startTime;
+          const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+          const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+          const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+          setSessionDuration(`${h}:${m}:${s}`);
+        }
+      };
+
+      const updateRestTimer = () => {
+        if (isTimerOpen && timerEndTimeRef.current) {
+          const remaining = Math.max(0, Math.ceil((timerEndTimeRef.current - Date.now()) / 1000));
+          setTimerVal(remaining);
+          if (remaining <= 0) {
+            setIsTimerOpen(false);
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          }
+        }
+      };
+
+      useEffect(() => {
+        const interval = setInterval(() => { updateSessionTime(); updateRestTimer(); }, 1000);
+        return () => clearInterval(interval);
+      }, [activeWorkout?.startTime, isTimerOpen]);
+
+      // ACWR daily rolling 7 / (28/4)
+      const acwr = useMemo(() => {
+        if (!history.length) return "1.00";
+
+        const daily = new Map();
+        for (const h of history) {
+          const day = (h.date || '').slice(0, 10);
+          if (!day) continue;
+          const vol = (typeof h.vol === 'number') ? h.vol : 0;
+          daily.set(day, (daily.get(day) || 0) + vol);
+        }
+        const days = [...daily.keys()].sort();
+        const lastDay = days[days.length - 1];
+        if (!lastDay) return "1.00";
+
+        const lastTs = Date.parse(lastDay + "T00:00:00Z");
+        const dayMs = 86400000;
+
+        const sumWindow = (lenDays) => {
+          let s = 0;
+          for (let i = 0; i < lenDays; i++) {
+            const d = new Date(lastTs - i * dayMs).toISOString().slice(0, 10);
+            s += daily.get(d) || 0;
+          }
+          return s;
+        };
+
+        const acute = sumWindow(7);
+        const chronicWeeklyAvg = (sumWindow(28) / 4) || 1;
+        const ratio = acute / chronicWeeklyAvg;
+        return Number.isFinite(ratio) ? ratio.toFixed(2) : "1.00";
+      }, [history]);
+
+      const startWorkout = (r = null) => {
+        const ws = {
+          name: r ? r.name : "Sessione Libera",
+          date: new Date().toISOString(),
+          startTime: Date.now(),
+          exercises: r ? (r.exs || []).map(e => ({
+            name: e.name, rest: 90, notes: "",
+            sets: [{ kg: '', reps: '', note: '', w: false, d: false }]
+          })) : []
+        };
+        setActiveWorkout(ws);
+        setActiveTab('workout');
+        if (!r) setModal({ type: 'exercise-select', mode: 'active', routineExs: [] });
+      };
+
+      const safeAddExerciseToActive = (exerciseName) => {
+        setActiveWorkout(prev => {
+          const base = prev || {
+            name: "Sessione Libera",
+            date: new Date().toISOString(),
+            startTime: Date.now(),
+            exercises: []
+          };
+          const newEx = { name: exerciseName, rest: 90, notes: "", sets: [{ kg:'', reps:'', note:'', w:false, d:false }] };
+          return { ...base, exercises: [...(base.exercises || []), newEx] };
+        });
+      };
+
+      const handleSetDone = (exI, sI) => {
+        if (!activeWorkout) return;
+        const n = deepClone(activeWorkout.exercises);
+        const s = n[exI].sets[sI];
+        s.d = !s.d;
+        if (s.d) {
+          const r = parseInt(n[exI].rest) || 90;
+          timerEndTimeRef.current = Date.now() + (r * 1000);
+          setTimerVal(r);
+          setIsTimerOpen(true);
+        }
+        setActiveWorkout({ ...activeWorkout, exercises: n });
+      };
+
+      const updateSetData = (exI, sI, field, val) => {
+        if (!activeWorkout) return;
+        const n = deepClone(activeWorkout.exercises);
+        n[exI].sets[sI][field] = val;
+        setActiveWorkout({ ...activeWorkout, exercises: n });
+      };
+
+      const updateExNote = (exI, val) => {
+        if (!activeWorkout) return;
+        const n = deepClone(activeWorkout.exercises);
+        n[exI].notes = val;
+        setActiveWorkout({ ...activeWorkout, exercises: n });
+      };
+
+      const finishWorkout = () => {
+        if (!activeWorkout) return;
+        let vol = 0;
+        (activeWorkout.exercises || []).forEach(ex => (ex.sets || []).forEach(s => {
+          if (s.w) return;
+          const kg = toNum(s.kg), reps = toNum(s.reps);
+          if (Number.isFinite(kg) && Number.isFinite(reps) && reps > 0) vol += (kg * reps);
+        }));
+        setHistory([...history, { ...activeWorkout, vol, duration: sessionDuration, date: new Date().toISOString() }]);
+        setActiveWorkout(null);
+        setActiveTab('home');
+      };
+
+      return (
+        <div className="max-w-md mx-auto min-h-screen px-4 pb-32">
+          <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+            <div className="absolute top-[-5%] left-[-5%] w-[120vw] h-[120vw] bg-indigo-600/[0.12] rounded-full blur-[140px]" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[100vw] h-[100vw] bg-purple-600/[0.1] rounded-full blur-[120px]" />
+          </div>
+
+          <div className="relative z-10 pt-8">
+            {activeTab === 'home' && (
+              <div className="space-y-6 view-animate">
+                <header className="flex justify-between items-center px-1 text-left">
+                  <div>
+                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">v5.7.1 patched</p>
+                    <h1 className="text-4xl font-black tracking-tighter">AuraFit</h1>
+                  </div>
+                  <div className="w-12 h-12 bg-white/[0.1] border border-white/20 flex items-center justify-center rounded-2xl shadow-xl shadow-indigo-500/10">
+                    <Icon name="dna" className="text-indigo-400" />
+                  </div>
+                </header>
+
+                <div className="grid grid-cols-2 gap-3 text-left">
+                  <div className="bg-white/[0.08] border border-white/10 p-5 rounded-[1.8rem] shadow-xl">
+                    <p className="text-[9px] font-black text-white/40 mb-1 uppercase tracking-widest">ACWR (7/28)</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-3xl font-black tabular-nums">{acwr}</span>
+                      <div className={`w-2.5 h-2.5 rounded-full ${parseFloat(acwr) > 1.5 ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`} />
+                    </div>
+                  </div>
+                  <div className="bg-white/[0.08] border border-white/10 p-5 rounded-[1.8rem] shadow-xl min-w-0">
+                    <p className="text-[9px] font-black text-white/40 mb-1 uppercase tracking-widest truncate">Last Vol</p>
+                    <span className="text-3xl font-black tabular-nums truncate block">{history[history.length-1]?.vol || 0}</span>
+                  </div>
+                </div>
+
+                <button onClick={() => activeWorkout ? setActiveTab('workout') : startWorkout()} className="w-full bg-white text-black py-7 rounded-[2.2rem] flex items-center justify-center gap-4 font-black text-lg shadow-2xl active:scale-[0.98] transition-all">
+                  <Icon name="play" size={24} fill="black" /> {activeWorkout ? 'Riprendi' : 'Inizia Allenamento'}
+                </button>
+
+                <div className="space-y-3 pt-2 text-left">
+                  <h3 className="text-white/40 font-bold text-[11px] uppercase tracking-widest px-2">Cronologia Recente</h3>
+                  {history.slice().reverse().map((h, i) => (
+                    <div key={i} className="bg-white/[0.07] border border-white/15 p-5 rounded-[1.5rem] flex justify-between items-center active:bg-white/20 transition-all cursor-pointer shadow-lg">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold uppercase text-sm truncate pr-2">{h.name}</p>
+                        <p className="text-[10px] font-black text-white/30 uppercase">{h.vol} KG • {h.duration || '--'}</p>
+                      </div>
+                      <Icon name="chevron-right" className="text-white/20" size={18} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'workout' && activeWorkout && (
+              <div className="space-y-6 view-animate pb-20">
+                <header className="flex justify-between items-center gap-2 px-1">
+                  <div className="w-1/4">
+                    <button onClick={() => setModal({type:'confirm', confirmAction: () => {setActiveWorkout(null); setActiveTab('home');}, data: "Annullare sessione?"})} className="text-white/50 text-[10px] font-black uppercase bg-white/5 px-3 py-2 rounded-full border border-white/10 active:bg-white/15">Esci</button>
+                  </div>
+                  <div className="flex-1 text-center min-w-0">
+                    <p className="text-indigo-400 text-[10px] font-black mb-0.5 uppercase tracking-widest truncate">{activeWorkout.name}</p>
+                    <p className="text-4xl font-black tabular-nums text-white leading-none">{sessionDuration}</p>
+                  </div>
+                  <div className="w-1/4 flex justify-end">
+                    <button onClick={() => setModal({type:'confirm', confirmAction: finishWorkout, data: "Concludere allenamento?"})} className="bg-indigo-600 px-5 py-2.5 rounded-full text-[11px] font-black text-white shadow-xl shadow-indigo-600/40 border border-indigo-400/30 whitespace-nowrap">Fine</button>
+                  </div>
+                </header>
+
+                <div className="space-y-4 text-left">
+                  {activeWorkout.exercises.map((ex, exI) => {
+                    const exGhostNote = getGhostExerciseNotes(ex.name);
+                    return (
+                      <div key={exI} className="bg-white/[0.06] border border-white/15 p-5 rounded-[2rem] space-y-4 shadow-xl">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-xl font-black uppercase text-white leading-tight truncate">{ex.name}</h3>
+                            <div className="flex items-center gap-2 mt-1 opacity-60">
+                              <Icon name="clock" size={10} className="text-indigo-400" />
+                              <input type="number" value={ex.rest} onChange={(e) => { const n = deepClone(activeWorkout.exercises); n[exI].rest = e.target.value; setActiveWorkout({...activeWorkout, exercises: n}); }} className="w-8 bg-transparent text-[10px] font-black text-indigo-300 outline-none" />
+                              <span className="text-[9px] font-black uppercase">sec rest</span>
+                            </div>
+                          </div>
+                          <button onClick={() => { const n = activeWorkout.exercises.filter((_, i) => i !== exI); setActiveWorkout({...activeWorkout, exercises: n}); }} className="text-white/20 p-1 active:text-red-400"><Icon name="x" size={20}/></button>
+                        </div>
+
+                        <NoteArea initialValue={ex.notes} onCommit={(v) => updateExNote(exI, v)} ghost={exGhostNote || "Note tecniche..."} className="bg-white/[0.04] border-white/10" />
+
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-12 gap-2 text-[8px] font-black text-white/30 text-center uppercase tracking-tighter px-1">
+                            <span className="col-span-1">S</span>
+                            <span className="col-span-2">KG</span>
+                            <span className="col-span-2">RIP.</span>
+                            <span className="col-span-5 text-left pl-2">NOTE SERIE</span>
+                            <span className="col-span-1">T</span>
+                            <span className="col-span-1">OK</span>
+                          </div>
+
+                          {ex.sets.map((s, sI) => {
+                            const setGhost = getGhostSet(ex.name, sI);
+                            return (
+                              <div key={sI} className="grid grid-cols-12 gap-2 items-start">
+                                <span className="col-span-1 text-lg font-black text-indigo-400/80 text-center pt-1">{sI+1}</span>
+                                <div className="col-span-2"><EtherInput ghost={setGhost?.kg} initialValue={s.kg} onCommit={(v) => updateSetData(exI, sI, 'kg', v)} /></div>
+                                <div className="col-span-2"><EtherInput ghost={setGhost?.reps} initialValue={s.reps} onCommit={(v) => updateSetData(exI, sI, 'reps', v)} /></div>
+                                <div className="col-span-5"><NoteArea ghost={setGhost?.note} initialValue={s.note} onCommit={(v) => updateSetData(exI, sI, 'note', v)} /></div>
+                                <div className="col-span-1 flex justify-center pt-0.5"><button onClick={() => { const n = deepClone(activeWorkout.exercises); n[exI].sets[sI].w = !n[exI].sets[sI].w; setActiveWorkout({...activeWorkout, exercises: n}); }} className={`type-toggle !w-8 !h-8 !rounded-lg ${s.w ? 'type-w' : 'type-a'}`}>{s.w ? 'W' : 'A'}</button></div>
+                                <div className="col-span-1 flex justify-center pt-0.5"><button onClick={() => handleSetDone(exI, sI)} className={`check-box !w-8 !h-8 !rounded-lg ${s.d ? 'checked' : ''}`}><Icon name="check" size={16} className={s.d ? 'text-white' : 'opacity-0'} /></button></div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <button onClick={() => { const n = deepClone(activeWorkout.exercises); const last = n[exI].sets[n[exI].sets.length-1] || {kg:'', reps:'', w:false}; n[exI].sets.push({kg: last.kg, reps: last.reps, note: '', w: last.w, d:false}); setActiveWorkout({...activeWorkout, exercises: n}); }} className="w-full py-3 bg-white/[0.04] rounded-2xl text-[10px] font-black uppercase border border-white/5 active:bg-white/10 shadow-lg tracking-widest">+ Nuova Serie</button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button onClick={() => setModal({ type: 'exercise-select', mode: 'active', routineExs: [] })} className="w-full bg-white/[0.03] border-2 border-dashed border-white/15 py-12 flex flex-col items-center gap-3 text-white/30 rounded-[2.5rem] shadow-2xl active:text-white transition-all">
+                  <Icon name="plus" size={36} strokeWidth={3} /><span>Aggiungi Esercizio</span>
+                </button>
+              </div>
+            )}
+
+            {activeTab === 'routines' && (
+              <div className="space-y-8 pt-4 view-animate text-left">
+                <h1 className="text-5xl font-black tracking-tighter uppercase px-1">Schede</h1>
+                <div className="space-y-4">
+                  {routines.map((r, i) => (
+                    <div key={i} className="bg-white/[0.08] border border-white/12 p-7 rounded-[2rem] space-y-5 shadow-2xl">
+                      <div className="flex justify-between items-center"><h3 className="text-2xl font-black uppercase text-white tracking-tight">{r.name}</h3><button onClick={() => setModal({type:'confirm', confirmAction: () => setRoutines(routines.filter((_,idx)=>idx!==i)), data: `Eliminare ${r.name}?`})} className="text-white/20 p-2"><Icon name="trash-2" size={20}/></button></div>
+                      <button onClick={() => startWorkout(r)} className="w-full bg-indigo-600 py-5 rounded-[2rem] font-black uppercase text-sm shadow-xl active:scale-[0.98] border border-indigo-400/20">Lancia Workout</button>
+                    </div>
+                  ))}
+                  <button onClick={() => setModal({type: 'name-routine'})} className="w-full glass border-dashed py-10 flex flex-col items-center gap-3 text-white/20 active:text-white active:bg-white/5"><Icon name="plus" /><span>Crea Nuova Scheda</span></button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'stats' && (
+              <div className="space-y-10 pt-4 view-animate pb-24 text-left">
+                <h1 className="text-5xl font-black tracking-tighter uppercase px-1">Dati</h1>
+                <div className="bg-white/[0.08] border border-white/15 p-7 rounded-[2rem] space-y-8 shadow-2xl">
+                  <h3 className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.3em]">Manutenzione Database</h3>
+                  <div className="space-y-4 text-center">
+                    <button onClick={() => {
+                      const data = JSON.stringify({history, routines, customs});
+                      const blob = new Blob([data], {type: 'application/json'});
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a'); a.href = url; a.download = `aurafit_backup.json`;
+                      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                    }} className="w-full bg-white text-black py-5 rounded-[1.8rem] font-black uppercase text-xs active:scale-95 flex items-center justify-center gap-3 shadow-lg shadow-white/5"><Icon name="download" size={18} /> Backup Medico</button>
+
+                    <button onClick={() => fileInputRef.current.click()} className="w-full bg-white/5 border border-white/15 text-white py-5 rounded-[1.8rem] font-black uppercase text-xs flex items-center justify-center gap-3 active:bg-white/10"><Icon name="upload" size={18} /> Ripristina Dati</button>
+                    <input type="file" ref={fileInputRef} onChange={(ev) => {
+                      const file = ev.target.files[0]; if(!file) return;
+                      const reader = new FileReader(); reader.onload = (e) => {
+                        try {
+                          const d = JSON.parse(e.target.result);
+                          setModal({type:'confirm', confirmAction: () => {setHistory(d.history || []); setRoutines(d.routines || []); setCustoms(d.customs || {});}, data: "Ripristinare backup? I dati attuali verranno sovrascritti."});
+                        } catch(err) { setModal({type:'info', data:"File non valido."}); }
+                        finally { ev.target.value = ''; }
+                      }; reader.readAsText(file);
+                    }} className="hidden" accept=".json" />
+                    <p className="text-[9px] font-black uppercase text-white/20 tracking-widest pt-2">I dati risiedono localmente sulla PWA</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <nav className={`fixed bottom-8 left-1/2 -translate-x-1/2 w-[88%] max-w-sm z-50 transition-all duration-700 ${activeTab === 'workout' ? 'translate-y-40 opacity-0 pointer-events-none' : ''}`}>
+            <div className="bg-black/90 backdrop-blur-[50px] border border-white/20 p-2.5 rounded-full flex items-center justify-around shadow-[0_30px_70px_rgba(0,0,0,0.95)]">
+              <button onClick={() => setActiveTab('home')} className={`p-4 rounded-full transition-all ${activeTab === 'home' ? 'bg-white text-black scale-105 shadow-xl' : 'text-white/40'}`}><Icon name="home" /></button>
+              <button onClick={() => setActiveTab('routines')} className={`p-4 rounded-full transition-all ${activeTab === 'routines' ? 'bg-white text-black scale-105 shadow-xl' : 'text-white/40'}`}><Icon name="clipboard-list" /></button>
+              <button onClick={() => setActiveTab('stats')} className={`p-4 rounded-full transition-all ${activeTab === 'stats' ? 'bg-white text-black scale-105 shadow-xl' : 'text-white/40'}`}><Icon name="database" /></button>
+            </div>
+          </nav>
+
+          {/* MODAL LIBRERIA */}
+          {modal.type === 'exercise-select' && (
+            <div className="fixed inset-0 z-[1000] bg-[#020202]/98 backdrop-blur-[60px] p-6 flex flex-col overflow-y-auto animate-in fade-in">
+              <div className="flex justify-between items-center mb-8 px-1 text-left"><h2 className="text-3xl font-black uppercase text-white tracking-tighter">Libreria</h2><button onClick={() => setModal({type:null})} className="w-12 h-12 bg-white/10 border border-white/20 rounded-full flex items-center justify-center active:scale-90 shadow-xl"><Icon name="x" size={24}/></button></div>
+              <div className="relative mb-8 group"><Icon name="search" size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-400" /><input type="text" placeholder="Cerca..." className="w-full pl-14 pr-8 py-5 bg-white/[0.08] border border-white/20 rounded-[1.8rem] text-left text-lg font-bold text-white outline-none focus:border-indigo-400 shadow-2xl" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
+              <div className="space-y-3 pb-40">
+                {Object.entries({...INITIAL_LIB, ...customs}).map(([cat, exs]) => {
+                  const filtered = exs.filter(e => e.toLowerCase().includes(searchQuery.toLowerCase()));
+                  if (filtered.length === 0) return null;
+                  const isOpen = searchQuery.length > 0 || expandedCats[cat];
+                  return (
+                    <div key={cat} className="bg-white/[0.08] border border-white/20 rounded-[1.8rem] overflow-hidden shadow-xl text-left">
+                      <div onClick={() => toggleCat(cat)} className="p-6 flex justify-between items-center cursor-pointer border-b border-white/10 active:bg-white/[0.08] transition-colors"><span className="font-black text-[11px] uppercase text-white/60 tracking-widest">{cat}</span><Icon name="chevron-down" className={`text-indigo-400 transition-all duration-300 ${isOpen ? 'rotate-180' : ''}`} /></div>
+                      {isOpen && (
+                        <div className="p-3 space-y-2 bg-black/50 animate-in slide-in-from-top-4">
+                          {filtered.map(ex => (
+                            <button key={ex} onClick={() => { safeAddExerciseToActive(ex); setModal({type:null}); }} className="w-full p-4 text-left font-extrabold bg-white/[0.05] border border-white/10 rounded-2xl flex justify-between items-center uppercase active:bg-indigo-600 active:text-white transition-all group text-white">
+                              <span className="text-xs tracking-tight">{ex}</span>
+                              <Icon name="plus" className="text-indigo-400 group-active:text-white" size={20} />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* MODAL NAME ROUTINE */}
+          {modal.type === 'name-routine' && (
+            <div className="fixed inset-0 z-[1200] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-8">
+              <div className="glass p-10 w-full max-w-xs space-y-8 border-indigo-500/20 shadow-2xl">
+                <h2 className="text-2xl font-black uppercase text-center tracking-tighter">Nuova Scheda</h2>
+                <input id="rn-in" type="text" placeholder="Es. Split A" className="w-full text-lg font-black bg-white/[0.02] border border-white/5 rounded-2xl p-6 text-center focus:border-indigo-500 outline-none" autoFocus />
+                <div className="flex gap-4">
+                  <button onClick={() => setModal({type:null})} className="flex-1 py-4 glass text-[10px] font-black uppercase opacity-40">Chiudi</button>
+                  <button onClick={() => { const val = document.getElementById('rn-in').value; if(val) { startWorkout({name: val, exs: []}); setModal({type:null}); } }} className="flex-1 py-4 bg-white text-black rounded-2xl text-[10px] font-black uppercase">Crea</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL CONFIRM */}
+          {modal.type === 'confirm' && (
+            <div className="fixed inset-0 z-[4000] bg-black/90 backdrop-blur-xl flex items-center justify-center p-8 view-animate">
+              <div className="glass p-8 w-full max-w-xs space-y-6 text-center shadow-2xl border-white/10">
+                <p className="text-sm font-bold uppercase text-white/80 leading-relaxed">{modal.data}</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setModal({type:null})} className="flex-1 py-3 bg-white/5 rounded-xl text-[10px] font-black uppercase">No</button>
+                  <button onClick={() => { modal.confirmAction(); setModal({type:null}); }} className="flex-1 py-3 bg-indigo-600 rounded-xl text-[10px] font-black uppercase text-white shadow-xl shadow-indigo-600/30">Si</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* REST TIMER */}
+          <div className={`fixed top-12 left-1/2 -translate-x-1/2 w-[92%] max-w-sm z-[3000] bg-[#0A0A0A] border-2 border-indigo-500/60 p-6 rounded-[2.5rem] flex items-center justify-between shadow-[0_50px_100px_rgba(0,0,0,0.95)] transition-all duration-500 ${isTimerOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 -translate-y-12 pointer-events-none'}`}>
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              <div className={`text-indigo-400 font-black text-5xl tabular-nums tracking-tighter flex-shrink-0 ${timerVal <= 10 ? 'animate-pulse text-red-500' : ''}`}>{Math.floor(timerVal/60)}:{(timerVal%60).toString().padStart(2,'0')}</div>
+              <p className="text-[9px] font-black uppercase text-white/50 leading-tight truncate text-left tracking-widest">Recupero<br/>Attivo</p>
+            </div>
+            <button onClick={() => { setIsTimerOpen(false); timerEndTimeRef.current = null; setTimerVal(0); }} className="bg-indigo-600/30 border border-indigo-500/40 px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-indigo-200 active:bg-indigo-600 transition-all flex-shrink-0 ml-2 text-center">Salta</button>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+      });
+    }
+  </script>
+
 </body>
 </html>
