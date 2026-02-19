@@ -4,7 +4,7 @@
    - other same-origin assets: cache-first
    - versioned cache + automatic cleanup (no need to clear app or lose data)
 */
-const CACHE_NAME = 'aurafit-cache-v152';
+const CACHE_NAME = 'aurafit-cache-v153';
 const PRECACHE = ['./', './index.html', './manifest.json', './service-worker.js', './icon-192.png', './icon-512.png', './icon-512-maskable.png', './apple-touch-icon.png', './favicon-16.png', './favicon-32.png'];
 
 self.addEventListener('install', (event) => {
