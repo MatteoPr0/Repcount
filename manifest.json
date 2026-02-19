@@ -1,12 +1,12 @@
 {
-  "name": "AuraFit",
-  "short_name": "AuraFit",
+  "name": "PasseFIT",
+  "short_name": "PasseFIT",
   "description": "Gym log ultra-rapido con timer recuperi, note e backup locale.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#020202",
-  "theme_color": "#020202",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "lang": "it-IT",
   "icons": [
     {
