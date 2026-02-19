@@ -71,13 +71,11 @@
   
 })();
 </script>
-<script type="text/babel">
-    const { useState, useEffect, useMemo, useRef } = React;
-
+<script type="text/babel">    const { useState, useEffect, useMemo, useRef } = React;
+      const APP_VERSION = 'v15.0-drag';
     const Icon = ({ name, size = 24, className = "" }) => {
       return <i data-lucide={name} style={{ width: size, height: size }} className={`${className} inline-block`} />;
     };
-
     const INITIAL_LIB = {
             "Petto": [
               "Panca Piana Bilanciere","Panca Inclinata Bilanciere","Panca Declinata Bilanciere",
@@ -131,28 +129,23 @@
               "Mountain Climber","Sit-up","V-up","Toe Touch","Cable Crunch Unilaterale"
             ]
         };
-
         const MUSCLE_MAP = {};
     Object.entries(INITIAL_LIB).forEach(([cat, list]) => list.forEach(ex => MUSCLE_MAP[ex] = cat));
-
     const toNum = (x) => {
       if (x === null || x === undefined || x === '') return NaN;
       const n = Number(String(x).replace(',', '.'));
       return Number.isFinite(n) ? n : NaN;
     };
-
     const genId = () => {
   try {
     if (crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   } catch (e) {}
   return 'w_' + Date.now() + '_' + Math.random().toString(16).slice(2);
 };
-
 const deepClone = (obj) => {
       if (typeof structuredClone === 'function') return structuredClone(obj);
       return JSON.parse(JSON.stringify(obj));
     };
-
     const EtherInput = ({ initialValue, onCommit, ghost, className = "" }) => {
       const [localVal, setLocalVal] = useState(initialValue || '');
       useEffect(() => { setLocalVal(initialValue || ''); }, [initialValue]);
@@ -165,13 +158,10 @@ const deepClone = (obj) => {
         />
       );
     };
-
     const NoteArea = ({ initialValue, onCommit, ghost, className = "" }) => {
       const [localVal, setLocalVal] = useState(initialValue || '');
       const textareaRef = useRef(null);
-
       useEffect(() => { setLocalVal(initialValue || ''); }, [initialValue]);
-
       const adjustHeight = () => {
                 const el = textareaRef.current;
                 if (!el) return;
@@ -185,7 +175,6 @@ const deepClone = (obj) => {
                 el.style.height = h + 'px';
             };
       useEffect(() => { adjustHeight(); }, [localVal]);
-
       return (
         <textarea
           ref={textareaRef} rows="1" value={localVal} placeholder={ghost || "..."}
@@ -195,21 +184,17 @@ const deepClone = (obj) => {
         />
       );
     };
-
 const MiniBarChart = ({ data, height = 64 }) => {
   const values = (data || []).map(d => Number(d.value || 0));
   const max = Math.max(0, ...values);
   const hasData = max > 0;
-
   const w = 280; // virtual width for viewBox
   const h = 52;  // virtual height for viewBox
   const padX = 8;
   const padY = 6;
   const baselineY = h - padY;
-
   const n = Math.max(1, values.length);
   const barW = (w - padX * 2) / n;
-
   return (
     <svg className="w-full" style={{ height }} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-label="Attività ultimi 14 giorni">
       {/* baseline */}
@@ -231,7 +216,6 @@ const MiniBarChart = ({ data, height = 64 }) => {
     </svg>
   );
 };
-
 const fmtWeekday = (d) => {
     try {
         return new Intl.DateTimeFormat('it-IT', { weekday: 'short' }).format(d).replace('.', '').slice(0, 3);
@@ -239,19 +223,13 @@ const fmtWeekday = (d) => {
         return ['dom','lun','mar','mer','gio','ven','sab'][d.getDay()];
     }
 };
-
-
-
     function App() {
-
             // Flag mount per debug overlay
             useEffect(() => {
                 try { window.__AF_APP_MOUNTED__ = true; } catch(e) {}
             }, []);
-
       const [activeTab, setActiveTab] = useState('home');
       const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('af_v57_h') || '[]'));
-
 // one-time migration: assign stable ids to old workouts
 const ensureWorkoutIds = (arr) => {
   let changed = false;
@@ -262,7 +240,6 @@ const ensureWorkoutIds = (arr) => {
   });
   return { out, changed };
 };
-
 useEffect(() => {
   const { out, changed } = ensureWorkoutIds(history);
   if (changed) setHistory(out);
@@ -271,11 +248,9 @@ useEffect(() => {
       const [routines, setRoutines] = useState(() => JSON.parse(localStorage.getItem('af_v57_r') || '[]'));
       const [customs, setCustoms] = useState(() => JSON.parse(localStorage.getItem('af_v57_c') || '{}'));
       const [activeWorkout, setActiveWorkout] = useState(() => JSON.parse(localStorage.getItem('af_v57_aw') || 'null'));
-
       const [isTimerOpen, setIsTimerOpen] = useState(false);
       const [timerVal, setTimerVal] = useState(0);
       const timerEndTimeRef = useRef(null);
-
       const [modal, setModal] = useState({ type: null, mode: null, routineExs: [], confirmAction: null });
       const [searchQuery, setSearchQuery] = useState('');
             const [customForm, setCustomForm] = useState({ open:false, name:'', cat:'Petto' });
@@ -302,12 +277,10 @@ useEffect(() => {
             }, [customs]);
 const [expandedCats, setExpandedCats] = useState({});
       const [sessionDuration, setSessionDuration] = useState("00:00:00");
-
             // Drag & drop riordino esercizi (POINTER-BASED: touch + mouse)
             const exCardRefs = useRef([]);
             const dragRef = useRef({ active:false, from:-1, over:-1, pointerId:null });
             const [dragUI, setDragUI] = useState({ active:false, from:-1, over:-1 });
-
             const computeOverIndex = (clientY) => {
                 const refs = exCardRefs.current || [];
                 let over = -1;
@@ -321,7 +294,6 @@ const [expandedCats, setExpandedCats] = useState({});
                 }
                 return over;
             };
-
             const reorderExercises = (fromIdx, toIdx) => {
                 if (!activeWorkout || !activeWorkout.exercises) return;
                 const n = activeWorkout.exercises.slice();
@@ -331,13 +303,11 @@ const [expandedCats, setExpandedCats] = useState({});
                 n.splice(toIdx, 0, moved);
                 setActiveWorkout({ ...activeWorkout, exercises: n });
             };
-
             const dragStart = (fromIdx, pointerId, clientY) => {
                 dragRef.current = { active:true, from:fromIdx, over:fromIdx, pointerId };
                 setDragUI({ active:true, from:fromIdx, over:fromIdx });
                 if (navigator && navigator.vibrate) navigator.vibrate(10);
             };
-
             const dragMove = (clientY) => {
                 if (!dragRef.current.active) return;
                 const over = computeOverIndex(clientY);
@@ -346,7 +316,6 @@ const [expandedCats, setExpandedCats] = useState({});
                     setDragUI({ active:true, from:dragRef.current.from, over });
                 }
             };
-
             const dragEnd = () => {
                 if (!dragRef.current.active) return;
                 const from = dragRef.current.from;
@@ -355,7 +324,6 @@ const [expandedCats, setExpandedCats] = useState({});
                 setDragUI({ active:false, from:-1, over:-1 });
                 reorderExercises(from, over);
             };
-
             const bindDragListeners = () => {
                 // Some Android browsers don't deliver pointermove to the handle even with capture.
                 // Listening on window makes drag reliable.
@@ -368,7 +336,6 @@ const [expandedCats, setExpandedCats] = useState({});
                 window.removeEventListener('pointerup', onDragPointerUp);
                 window.removeEventListener('pointercancel', onDragPointerUp);
             };
-
             const onDragPointerDown = (fromIdx) => (e) => {
                 try { e.preventDefault(); } catch(err) {}
                 // Pointer capture = move events continue even if finger leaves the handle
@@ -377,14 +344,12 @@ const [expandedCats, setExpandedCats] = useState({});
                 dragStart(fromIdx, e.pointerId, e.clientY);
                 bindDragListeners();
             };
-
             const onDragPointerMove = (e) => {
                 if (!dragRef.current.active) return;
                 if (dragRef.current.pointerId !== null && e.pointerId !== dragRef.current.pointerId) return;
                 try { e.preventDefault(); } catch(err) {}
                 dragMove(e.clientY);
             };
-
             const onDragPointerUp = (e) => {
                 if (!dragRef.current.active) return;
                 if (dragRef.current.pointerId !== null && e.pointerId !== dragRef.current.pointerId) return;
@@ -394,15 +359,12 @@ const [expandedCats, setExpandedCats] = useState({});
                 try { e.currentTarget.releasePointerCapture(e.pointerId); } catch(err) {}
                 dragEnd();
             };
-
             const onDragPointerCancel = () => {
                 document.body.classList.remove('select-none');
                 dragEnd();
             };
-
 const [installState, setInstallState] = useState({ canInstall: false, shown: false, reason: "" });
             const deferredPromptRef = useRef(null);
-
             useEffect(() => {
                 // Installability hook (Chrome/Android)
                 const onBip = (e) => {
@@ -411,7 +373,6 @@ const [installState, setInstallState] = useState({ canInstall: false, shown: fal
                     setInstallState({ canInstall: true, shown: true, reason: "" });
                 };
                 window.addEventListener('beforeinstallprompt', onBip);
-
                 // Basic diagnostics after load
                 setTimeout(() => {
                     const hasSW = 'serviceWorker' in navigator;
@@ -427,10 +388,8 @@ const [installState, setInstallState] = useState({ canInstall: false, shown: fal
                         return { ...prev, shown: true, reason };
                     });
                 }, 1200);
-
                 return () => window.removeEventListener('beforeinstallprompt', onBip);
             }, []);
-
             const triggerInstall = async () => {
                 const dp = deferredPromptRef.current;
                 if (!dp) return;
@@ -439,23 +398,18 @@ const [installState, setInstallState] = useState({ canInstall: false, shown: fal
                 deferredPromptRef.current = null;
                 setInstallState({ canInstall: false, shown: true, reason: "Se hai scelto 'Annulla', riprova dal menu Chrome tra poco." });
             };
-
-
       const fileInputRef = useRef(null);
       const toggleCat = (cat) => setExpandedCats(prev => ({ ...prev, [cat]: !prev[cat] }));
-
       useEffect(() => {
         localStorage.setItem('af_v57_h', JSON.stringify(history));
         localStorage.setItem('af_v57_r', JSON.stringify(routines));
         localStorage.setItem('af_v57_c', JSON.stringify(customs));
         localStorage.setItem('af_v57_aw', JSON.stringify(activeWorkout));
       }, [history, routines, customs, activeWorkout]);
-
       // lucide icons: avoid every render
       useEffect(() => {
         if (window.lucide) window.lucide.createIcons();
-      }, [activeTab, modal.type, activeWorkout, searchQuery]);
-
+      }, [activeTab, (modal && modal.type), activeWorkout, searchQuery]);
       // Ghost cache (O(1) lookup)
       const lastByExercise = useMemo(() => {
         const map = new Map();
@@ -469,19 +423,16 @@ const [installState, setInstallState] = useState({ canInstall: false, shown: fal
         }
         return map;
       }, [history]);
-
       const getGhostSet = (exName, setIdx) => {
         const key = (exName || '').trim().toLowerCase();
         const ex = lastByExercise.get(key);
         return ex?.sets?.[setIdx] || null;
       };
-
       const getGhostExerciseNotes = (exName) => {
         const key = (exName || '').trim().toLowerCase();
         const ex = lastByExercise.get(key);
         return ex?.notes || null;
       };
-
       const updateSessionTime = () => {
         if (activeWorkout && activeWorkout.startTime) {
           const diff = Date.now() - activeWorkout.startTime;
@@ -491,7 +442,6 @@ const [installState, setInstallState] = useState({ canInstall: false, shown: fal
           setSessionDuration(`${h}:${m}:${s}`);
         }
       };
-
       const updateRestTimer = () => {
         if (isTimerOpen && timerEndTimeRef.current) {
           const remaining = Math.max(0, Math.ceil((timerEndTimeRef.current - Date.now()) / 1000));
@@ -502,16 +452,13 @@ const [installState, setInstallState] = useState({ canInstall: false, shown: fal
           }
         }
       };
-
       useEffect(() => {
         const interval = setInterval(() => { updateSessionTime(); updateRestTimer(); }, 1000);
         return () => clearInterval(interval);
       }, [activeWorkout?.startTime, isTimerOpen]);
-
       // ACWR daily rolling 7 / (28/4)
       const acwr = useMemo(() => {
         if (!history.length) return "1.00";
-
         const daily = new Map();
         for (const h of history) {
           const day = (h.date || '').slice(0, 10);
@@ -522,10 +469,8 @@ const [installState, setInstallState] = useState({ canInstall: false, shown: fal
         const days = [...daily.keys()].sort();
         const lastDay = days[days.length - 1];
         if (!lastDay) return "1.00";
-
         const lastTs = Date.parse(lastDay + "T00:00:00Z");
         const dayMs = 86400000;
-
         const sumWindow = (lenDays) => {
           let s = 0;
           for (let i = 0; i < lenDays; i++) {
@@ -534,14 +479,11 @@ const [installState, setInstallState] = useState({ canInstall: false, shown: fal
           }
           return s;
         };
-
         const acute = sumWindow(7);
         const chronicWeeklyAvg = (sumWindow(28) / 4) || 1;
         const ratio = acute / chronicWeeklyAvg;
         return Number.isFinite(ratio) ? ratio.toFixed(2) : "1.00";
       }, [history]);
-
-
 const trend = useMemo(() => {
     const keyLocal = (d) => {
         const y = d.getFullYear();
@@ -549,7 +491,6 @@ const trend = useMemo(() => {
         const da = String(d.getDate()).padStart(2, '0');
         return `${y}-${m}-${da}`;
     };
-
     const now = new Date();
     const byDay = {};
     for (const h of history) {
@@ -565,7 +506,6 @@ const trend = useMemo(() => {
             }
         }
     }
-
     const mkDays = (n) => {
         const out = [];
         for (let i = n - 1; i >= 0; i--) {
@@ -583,35 +523,26 @@ const trend = useMemo(() => {
         }
         return out;
     };
-
     const last14 = mkDays(14);
-
     const sumRange = (days) => days.reduce((a, c) => a + (c.value || 0), 0);
     const cntRange = (days) => days.reduce((a, c) => a + (c.count || 0), 0);
-
     const last7 = last14.slice(7);
     const totalVol7 = sumRange(last7);
     const totalSessions7 = cntRange(last7);
-
     // Streak (giorni consecutivi con almeno 1 sessione)
     let streak = 0;
     for (let i = last14.length - 1; i >= 0; i--) {
         if ((last14[i].count || 0) > 0) streak += 1;
         else break;
     }
-
     return { last14, totalVol7, totalSessions7, streak };
 }, [history]);
-
             // Derived helpers for the Home mini-chart (avoid undefined vars in JSX)
             const bars14 = useMemo(() => (
                 (trend.last14 || []).map(d => ({ value: d.value || 0, count: d.count || 0, label: fmtWeekday(d.date) }))
             ), [trend]);
-
             const count7 = trend.totalSessions7 || 0;
             const streak14 = trend.streak || 0;
-
-
       const startWorkout = (r = null) => {
         const ws = {
           id: genId(),
@@ -619,7 +550,7 @@ const trend = useMemo(() => {
           date: new Date().toISOString(),
           startTime: Date.now(),
           exercises: r ? (r.exs || []).map(e => ({
-            name: e.name, rest: 90, notes: "",
+            name: (typeof e === 'string' ? e : (e && e.name) ? e.name : ''), rest: 90, notes: "",
             sets: [{ kg: '', reps: '', note: '', w: false, d: false }]
           })) : []
         };
@@ -627,7 +558,6 @@ const trend = useMemo(() => {
         setActiveTab('workout');
         if (!r) setModal({ type: 'exercise-select', mode: 'active', routineExs: [] });
       };
-
       const safeAddExerciseToActive = (exerciseName) => {
         setActiveWorkout(prev => {
           const base = prev || {
@@ -641,7 +571,17 @@ const trend = useMemo(() => {
           return { ...base, exercises: [...(base.exercises || []), newEx] };
         });
       };
-
+const safeAddExerciseToRoutine = (routineId, exerciseName) => {
+  setRoutines(prev => {
+    const next = (prev || []).map(r => {
+      if(String(r.id) !== String(routineId)) return r;
+      const exs = Array.isArray(r.exs) ? r.exs : [];
+      if(exs.some(n => String(n).toLowerCase() === String(exerciseName).toLowerCase())) return r; // no duplicates
+      return { ...r, exs: [...exs, exerciseName] };
+    });
+    return next;
+  });
+};
       const handleSetDone = (exI, sI) => {
         if (!activeWorkout) return;
         const n = deepClone(activeWorkout.exercises);
@@ -655,7 +595,6 @@ const trend = useMemo(() => {
         }
         setActiveWorkout({ ...activeWorkout, exercises: n });
       };
-
       const updateSetData = (exI, sI, field, val) => {
         if (!activeWorkout) return;
         const n = deepClone(activeWorkout.exercises);
@@ -663,13 +602,25 @@ const trend = useMemo(() => {
         setActiveWorkout({ ...activeWorkout, exercises: n });
       };
 
+      const removeSet = (exI, sI) => {
+        if (!activeWorkout) return;
+        const n = deepClone(activeWorkout.exercises);
+        const sets = n[exI].sets || [];
+        if (sets.length <= 1) {
+          // reset to a single empty set (keeps UX consistent)
+          n[exI].sets = [{ kg: '', reps: '', note: '', w: false, d: false }];
+        } else {
+          sets.splice(sI, 1);
+          n[exI].sets = sets;
+        }
+        setActiveWorkout({ ...activeWorkout, exercises: n });
+      };
       const updateExNote = (exI, val) => {
         if (!activeWorkout) return;
         const n = deepClone(activeWorkout.exercises);
         n[exI].notes = val;
         setActiveWorkout({ ...activeWorkout, exercises: n });
       };
-
       
             const addCustomExercise = (cat, name) => {
                 const clean = (name || '').trim();
@@ -689,7 +640,6 @@ const trend = useMemo(() => {
                 });
                 return true;
             };
-
 const finishWorkout = () => {
         if (!activeWorkout) return;
         let vol = 0;
@@ -702,39 +652,34 @@ const finishWorkout = () => {
         setActiveWorkout(null);
         setActiveTab('home');
       };
-
       const renameActiveWorkout = (newName) => {
         const name = (newName || '').trim();
         if (!name) return;
         setActiveWorkout(prev => prev ? ({ ...prev, name }) : prev);
       };
-
       const renameHistoryWorkout = (workoutId, newName) => {
         const name = (newName || '').trim();
         if (!name) return;
         setHistory(prev => (prev || []).map(h => (h.id === workoutId ? { ...h, name } : h)));
       };
-
       return (
         <div className="max-w-md mx-auto min-h-screen px-4 pb-32">
           <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
             <div className="absolute top-[-5%] left-[-5%] w-[120vw] h-[120vw] bg-indigo-600/[0.12] rounded-full blur-[140px]" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[100vw] h-[100vw] bg-purple-600/[0.1] rounded-full blur-[120px]" />
           </div>
-
           <div className="relative z-10 pt-8">
             {activeTab === 'home' && (
               <div className="space-y-6 view-animate">
                 <header className="flex justify-between items-center px-1 text-left">
                   <div>
-                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">v15.0-drag</p>
+                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">{APP_VERSION}</p>
                     <h1 className="text-4xl font-black tracking-tighter">AuraFit</h1>
                   </div>
                   <div className="w-12 h-12 bg-white/[0.1] border border-white/20 flex items-center justify-center rounded-2xl shadow-xl shadow-indigo-500/10">
                     <Icon name="dna" className="text-indigo-400" />
                   </div>
                 </header>
-
                 <div className="grid grid-cols-2 gap-3 text-left">
                   <div className="bg-white/[0.08] border border-white/10 p-5 rounded-[1.8rem] shadow-xl">
                     <p className="text-[9px] font-black text-white/40 mb-1 uppercase tracking-widest">ACWR (7/28)</p>
@@ -766,28 +711,26 @@ const finishWorkout = () => {
                                                 </div>
                                             </div>
                                         </div>
-
                                         <div className="mt-4">
                                           <MiniBarChart data={bars14} height={72} />
-                                          <div className="mt-2 flex justify-between text-[10px] text-white/35 tracking-widest uppercase">
+                                          {/* Tailwind CDN doesn't ship grid-cols-14; use arbitrary template to avoid labels stacking vertically */}
+                                          <div className="mt-2 grid grid-cols-[repeat(14,minmax(0,1fr))] gap-x-1 text-[9px] text-white/35 tracking-widest uppercase leading-none">
                                             {bars14.map((b, i) => (
-                                              <span key={i} className="flex-1 text-center">{b.label}</span>
+                                              <div key={i} className="text-center">
+                                                <span className={i % 2 === 0 ? "" : "opacity-0"}>{b.label}</span>
+                                              </div>
                                             ))}
                                           </div>
                                         </div>
-
                                         <div className="mt-3 flex items-center justify-between text-[10px] text-white/35 tracking-widest uppercase">
                                           <span>Intensità</span>
                                           <span className="text-white/25">volume/giorno</span>
                                         </div>
                                     </div>
-
                                 </div>
-
                 <button onClick={() => activeWorkout ? setActiveTab('workout') : startWorkout()} className="w-full bg-white text-black py-7 rounded-[2.2rem] flex items-center justify-center gap-4 font-black text-lg shadow-2xl active:scale-[0.98] transition-all">
                   <Icon name="play" size={24} fill="black" /> {activeWorkout ? 'Riprendi' : 'Inizia Allenamento'}
                 </button>
-
                 <div className="space-y-3 pt-2 text-left">
                   <h3 className="text-white/40 font-bold text-[11px] uppercase tracking-widest px-2">Cronologia Recente</h3>
                   {history.slice().reverse().map((h, i) => (
@@ -814,7 +757,6 @@ const finishWorkout = () => {
                 </div>
               </div>
             )}
-
             {activeTab === 'workout' && activeWorkout && (
               <div className="space-y-6 view-animate pb-20">
                 <header className="flex justify-between items-center gap-2 px-1">
@@ -829,7 +771,6 @@ const finishWorkout = () => {
                     <button onClick={() => setModal({type:'confirm', confirmAction: finishWorkout, data: "Concludere allenamento?"})} className="bg-indigo-600 px-5 py-2.5 rounded-full text-[11px] font-black text-white shadow-xl shadow-indigo-600/40 border border-indigo-400/30 whitespace-nowrap">Fine</button>
                   </div>
                 </header>
-
                 <div className="space-y-4 text-left">
                   {activeWorkout.exercises.map((ex, exI) => {
                     const exGhostNote = getGhostExerciseNotes(ex.name);
@@ -857,19 +798,17 @@ const finishWorkout = () => {
                                                     <button onClick={() => { const n = activeWorkout.exercises.filter((_, i) => i !== exI); setActiveWorkout({...activeWorkout, exercises: n}); }} className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/30 active:bg-red-600/30" aria-label="Elimina esercizio"><Icon name="x" size={20}/></button>
                                                   </div>
                         </div>
-
                         <NoteArea initialValue={ex.notes} onCommit={(v) => updateExNote(exI, v)} ghost={exGhostNote || "Note tecniche..."} className="bg-white/[0.04] border-white/10" />
-
                         <div className="space-y-2">
                           <div className="grid grid-cols-12 gap-2 text-[8px] font-black text-white/30 text-center uppercase tracking-tighter px-1">
                             <span className="col-span-1">S</span>
                             <span className="col-span-2">KG</span>
                             <span className="col-span-2">RIP.</span>
-                            <span className="col-span-5 text-left pl-2">NOTE SERIE</span>
+                            <span className="col-span-4 text-left pl-2">NOTE SERIE</span>
+                            <span className="col-span-1"></span>
                             <span className="col-span-1">T</span>
                             <span className="col-span-1">OK</span>
                           </div>
-
                           {ex.sets.map((s, sI) => {
                             const setGhost = getGhostSet(ex.name, sI);
                             return (
@@ -877,26 +816,24 @@ const finishWorkout = () => {
                                 <span className="col-span-1 text-lg font-black text-indigo-400/80 text-center pt-1">{sI+1}</span>
                                 <div className="col-span-2"><EtherInput ghost={setGhost?.kg} initialValue={s.kg} onCommit={(v) => updateSetData(exI, sI, 'kg', v)} /></div>
                                 <div className="col-span-2"><EtherInput ghost={setGhost?.reps} initialValue={s.reps} onCommit={(v) => updateSetData(exI, sI, 'reps', v)} /></div>
-                                <div className="col-span-5"><NoteArea ghost={setGhost?.note} initialValue={s.note} onCommit={(v) => updateSetData(exI, sI, 'note', v)} /></div>
+                                <div className="col-span-4"><NoteArea ghost={setGhost?.note} initialValue={s.note} onCommit={(v) => updateSetData(exI, sI, 'note', v)} /></div>
                                 <div className="col-span-1 flex justify-center pt-0.5"><button onClick={() => { const n = deepClone(activeWorkout.exercises); n[exI].sets[sI].w = !n[exI].sets[sI].w; setActiveWorkout({...activeWorkout, exercises: n}); }} className={`type-toggle !w-8 !h-8 !rounded-lg ${s.w ? 'type-w' : 'type-a'}`}>{s.w ? 'W' : 'A'}</button></div>
                                 <div className="col-span-1 flex justify-center pt-0.5"><button onClick={() => handleSetDone(exI, sI)} className={`check-box !w-8 !h-8 !rounded-lg ${s.d ? 'checked' : ''}`}><Icon name="check" size={16} className={s.d ? 'text-white' : 'opacity-0'} /></button></div>
+                                <div className="col-span-1 flex justify-center pt-0.5"><button onClick={() => removeSet(exI, sI)} className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center active:bg-white/10" aria-label="Elimina serie"><Icon name="trash-2" size={16} className="text-white/40" /></button></div>
                               </div>
                             );
                           })}
                         </div>
-
                         <button onClick={() => { const n = deepClone(activeWorkout.exercises); const last = n[exI].sets[n[exI].sets.length-1] || {kg:'', reps:'', w:false}; n[exI].sets.push({kg: last.kg, reps: '', note: '', w: last.w, d:false}); setActiveWorkout({...activeWorkout, exercises: n}); }} className="w-full py-3 bg-white/[0.04] rounded-2xl text-[10px] font-black uppercase border border-white/5 active:bg-white/10 shadow-lg tracking-widest">+ Nuova Serie</button>
                       </div>
                     );
                   })}
                 </div>
-
                 <button onClick={() => setModal({ type: 'exercise-select', mode: 'active', routineExs: [] })} className="w-full bg-white/[0.03] border-2 border-dashed border-white/15 py-12 flex flex-col items-center gap-3 text-white/30 rounded-[2.5rem] shadow-2xl active:text-white transition-all">
                   <Icon name="plus" size={36} strokeWidth={3} /><span>Aggiungi Esercizio</span>
                 </button>
               </div>
             )}
-
             {activeTab === 'routines' && (
               <div className="space-y-8 pt-4 view-animate text-left">
                 <h1 className="text-5xl font-black tracking-tighter uppercase px-1">Schede</h1>
@@ -904,14 +841,16 @@ const finishWorkout = () => {
                   {routines.map((r, i) => (
                     <div key={i} className="bg-white/[0.08] border border-white/12 p-7 rounded-[2rem] space-y-5 shadow-2xl">
                       <div className="flex justify-between items-center"><h3 className="text-2xl font-black uppercase text-white tracking-tight">{r.name}</h3><button onClick={() => setModal({type:'confirm', confirmAction: () => setRoutines(routines.filter((_,idx)=>idx!==i)), data: `Eliminare ${r.name}?`})} className="text-white/20 p-2"><Icon name="trash-2" size={20}/></button></div>
-                      <button onClick={() => startWorkout(r)} className="w-full bg-indigo-600 py-5 rounded-[2rem] font-black uppercase text-sm shadow-xl active:scale-[0.98] border border-indigo-400/20">Lancia Workout</button>
+                      <div className="flex gap-3">
+                      <button onClick={() => setModal({ type: 'edit-routine', data: r.id })} className="flex-1 bg-white/[0.08] border border-white/12 py-5 rounded-[2rem] font-black uppercase text-[10px] text-white/80 shadow-xl active:scale-[0.98]">Modifica</button>
+                      <button onClick={() => startWorkout(r)} className="flex-1 bg-indigo-600 py-5 rounded-[2rem] font-black uppercase text-sm shadow-xl active:scale-[0.98] border border-indigo-400/20">Lancia Workout</button>
+                    </div>
                     </div>
                   ))}
                   <button onClick={() => setModal({type: 'name-routine'})} className="w-full glass border-dashed py-10 flex flex-col items-center gap-3 text-white/20 active:text-white active:bg-white/5"><Icon name="plus" /><span>Crea Nuova Scheda</span></button>
                 </div>
               </div>
             )}
-
             {activeTab === 'stats' && (
               <div className="space-y-10 pt-4 view-animate pb-24 text-left">
                 <h1 className="text-5xl font-black tracking-tighter uppercase px-1">Dati</h1>
@@ -919,20 +858,24 @@ const finishWorkout = () => {
                   <h3 className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.3em]">Manutenzione Database</h3>
                   <div className="space-y-4 text-center">
                     <button onClick={() => {
-                      const data = JSON.stringify({history, routines, customs});
+                      const data = JSON.stringify({ version: APP_VERSION, exportedAt: new Date().toISOString(), history, routines, schede: routines, customs, customExercises: customs }, null, 2);
                       const blob = new Blob([data], {type: 'application/json'});
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a'); a.href = url; a.download = `aurafit_backup.json`;
                       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
                     }} className="w-full bg-white text-black py-5 rounded-[1.8rem] font-black uppercase text-xs active:scale-95 flex items-center justify-center gap-3 shadow-lg shadow-white/5"><Icon name="download" size={18} /> Backup Medico</button>
-
                     <button onClick={() => fileInputRef.current.click()} className="w-full bg-white/5 border border-white/15 text-white py-5 rounded-[1.8rem] font-black uppercase text-xs flex items-center justify-center gap-3 active:bg-white/10"><Icon name="upload" size={18} /> Ripristina Dati</button>
                     <input type="file" ref={fileInputRef} onChange={(ev) => {
                       const file = ev.target.files[0]; if(!file) return;
                       const reader = new FileReader(); reader.onload = (e) => {
                         try {
                           const d = JSON.parse(e.target.result);
-                          setModal({type:'confirm', confirmAction: () => {setHistory(d.history || []); setRoutines(d.routines || []); setCustoms(d.customs || {});}, data: "Ripristinare backup? I dati attuali verranno sovrascritti."});
+                          setModal({type:'confirm', confirmAction: () => {const historyIn = Array.isArray(d.history) ? d.history : Array.isArray(d.workouts) ? d.workouts : [];
+                              const routinesIn = Array.isArray(d.routines) ? d.routines : Array.isArray(d.schede) ? d.schede : Array.isArray(d.plans) ? d.plans : Array.isArray(d.templates) ? d.templates : [];
+                              const customsIn = d.customs || d.customExercises || d.exercises || {};
+                              setHistory(historyIn);
+                              setRoutines(routinesIn);
+                              setCustoms(customsIn);}, data: "Ripristinare backup? I dati attuali verranno sovrascritti."});
                         } catch(err) { setModal({type:'info', data:"File non valido."}); }
                         finally { ev.target.value = ''; }
                       }; reader.readAsText(file);
@@ -943,7 +886,6 @@ const finishWorkout = () => {
               </div>
             )}
           </div>
-
           <nav className={`fixed bottom-8 left-1/2 -translate-x-1/2 w-[88%] max-w-sm z-50 transition-all duration-700 ${activeTab === 'workout' ? 'translate-y-40 opacity-0 pointer-events-none' : ''}`}>
             <div className="bg-black/90 backdrop-blur-[50px] border border-white/20 p-2.5 rounded-full flex items-center justify-around shadow-[0_30px_70px_rgba(0,0,0,0.95)]">
               <button onClick={() => setActiveTab('home')} className={`p-4 rounded-full transition-all ${activeTab === 'home' ? 'bg-white text-black scale-105 shadow-xl' : 'text-white/40'}`}><Icon name="home" /></button>
@@ -951,13 +893,11 @@ const finishWorkout = () => {
               <button onClick={() => setActiveTab('stats')} className={`p-4 rounded-full transition-all ${activeTab === 'stats' ? 'bg-white text-black scale-105 shadow-xl' : 'text-white/40'}`}><Icon name="database" /></button>
             </div>
           </nav>
-
           {/* MODAL LIBRERIA */}
-          {modal.type === 'exercise-select' && (
+          {modal && modal.type === 'exercise-select' && (
             <div className="fixed inset-0 z-[1000] bg-[#020202]/98 backdrop-blur-[60px] p-6 flex flex-col overflow-y-auto animate-in fade-in">
               <div className="flex justify-between items-center mb-8 px-1 text-left"><h2 className="text-3xl font-black uppercase text-white tracking-tighter">Libreria</h2><button onClick={() => setModal({type:null})} className="w-12 h-12 bg-white/10 border border-white/20 rounded-full flex items-center justify-center active:scale-90 shadow-xl"><Icon name="x" size={24}/></button>
                             </div>
-
                             {/* ADD CUSTOM EXERCISE */}
                             <div className="mb-6 space-y-3">
                               <button
@@ -970,7 +910,6 @@ const finishWorkout = () => {
                                 </div>
                                 <Icon name="chevron-down" size={20} className={`text-indigo-400 transition-transform ${customForm.open ? 'rotate-180' : ''}`} />
                               </button>
-
                               {customForm.open && (
                                 <div className="bg-white/[0.04] border border-white/12 rounded-[1.6rem] p-5 space-y-3 shadow-xl view-animate">
                                   <div className="grid grid-cols-3 gap-3">
@@ -997,7 +936,6 @@ const finishWorkout = () => {
                                       />
                                     </div>
                                   </div>
-
                                   <button
                                     onClick={() => {
                                       const ok = addCustomExercise(customForm.cat, customForm.name);
@@ -1008,14 +946,12 @@ const finishWorkout = () => {
                                   >
                                     Salva nell'elenco
                                   </button>
-
                                   <p className="text-[9px] font-black uppercase tracking-widest text-white/20">
                                     Suggerimento: usa nomi brevi e coerenti (es. "Panca inclinata Smith").
                                   </p>
                                 </div>
                               )}
                             </div>
-
                             <div className="relative mb-8 group">
 <Icon name="search" size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-400" /><input type="text" placeholder="Cerca..." className="w-full pl-14 pr-8 py-5 bg-white/[0.08] border border-white/20 rounded-[1.8rem] text-left text-lg font-bold text-white outline-none focus:border-indigo-400 shadow-2xl" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
               <div className="space-y-3 pb-40">
@@ -1048,9 +984,8 @@ const finishWorkout = () => {
                                                         Aggiungi
                                                       </button>
                                                     </div>
-
                           {filtered.map(ex => (
-                            <button key={ex} onClick={() => { safeAddExerciseToActive(ex); setModal({type:null}); }} className="w-full p-4 text-left font-extrabold bg-white/[0.05] border border-white/10 rounded-2xl flex justify-between items-center uppercase active:bg-indigo-600 active:text-white transition-all group text-white">
+                            <button key={ex} onClick={() => { (modal?.target === 'routine' ? safeAddExerciseToRoutine(modal.data, ex) : safeAddExerciseToActive(ex)); setModal(modal?.target === 'routine' ? { type: 'edit-routine', data: modal.data } : null); }} className="w-full p-4 text-left font-extrabold bg-white/[0.05] border border-white/10 rounded-2xl flex justify-between items-center uppercase active:bg-indigo-600 active:text-white transition-all group text-white">
                               <span className="text-xs tracking-tight">{ex}</span>
                               <Icon name="plus" className="text-indigo-400 group-active:text-white" size={20} />
                             </button>
@@ -1063,24 +998,71 @@ const finishWorkout = () => {
               </div>
             </div>
           )}
-
           {/* MODAL NAME ROUTINE */}
-          {modal.type === 'name-routine' && (
+          {modal && modal.type === 'name-routine' && (
             <div className="fixed inset-0 z-[1200] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-8">
               <div className="glass p-10 w-full max-w-xs space-y-8 border-indigo-500/20 shadow-2xl">
                 <h2 className="text-2xl font-black uppercase text-center tracking-tighter">Nuova Scheda</h2>
                 <input id="rn-in" type="text" placeholder="Es. Split A" className="w-full text-lg font-black bg-white/[0.02] border border-white/5 rounded-2xl p-6 text-center focus:border-indigo-500 outline-none" autoFocus />
                 <div className="flex gap-4">
                   <button onClick={() => setModal({type:null})} className="flex-1 py-4 glass text-[10px] font-black uppercase opacity-40">Chiudi</button>
-                  <button onClick={() => { const val = document.getElementById('rn-in').value; if(val) { startWorkout({name: val, exs: []}); setModal({type:null}); } }} className="flex-1 py-4 bg-white text-black rounded-2xl text-[10px] font-black uppercase">Crea</button>
+                  <button onClick={() => { const val = document.getElementById('rn-in').value?.trim(); if(val) { const r = { id: String(Date.now()), name: val, exs: [], createdAt: Date.now() }; setRoutines([r, ...routines]); setModal({ type: 'edit-routine', data: r.id }); } }} className="flex-1 py-4 bg-white text-black rounded-2xl text-[10px] font-black uppercase">Crea</button>
                 </div>
               </div>
             </div>
           )}
-
           
           {/* MODAL HISTORY */}
-          {modal.type === 'history' && modal.data && (
+      {/* MODAL EDIT ROUTINE */}
+{modal && modal.type === 'edit-routine' && (
+  (() => {
+    const r = (routines || []).find(x => String(x.id) === String(modal.data));
+    if(!r) return (
+      <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/60">
+        <div className="w-full max-w-xl bg-black/80 border border-white/10 rounded-3xl p-5">
+          <div className="text-white font-black text-lg">Scheda non trovata</div>
+          <button onClick={() => setModal({type:null,data:null})} className="mt-4 w-full py-4 bg-white text-black rounded-2xl font-black uppercase text-[10px]">Chiudi</button>
+        </div>
+      </div>
+    );
+    return (
+      <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/60">
+        <div className="w-full max-w-xl bg-black/80 border border-white/10 rounded-3xl p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-white/60 text-[10px] uppercase font-black tracking-widest">Modifica scheda</div>
+              <div className="text-white font-black text-xl">{r.name}</div>
+            </div>
+            <button onClick={() => setModal({type:null,data:null})} className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/10 text-white/80 font-black">✕</button>
+          </div>
+          <div className="mt-4 space-y-2 max-h-[52vh] overflow-auto pr-1">
+            {(r.exs || []).length === 0 && (
+              <div className="text-white/50 text-sm">Aggiungi esercizi alla scheda.</div>
+            )}
+            {(r.exs || []).map((ex, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 bg-white/[0.04] border border-white/10 rounded-2xl px-4 py-3">
+                <div className="text-white font-black text-sm truncate">{ex}</div>
+                <button onClick={() => {
+                  setRoutines(prev => (prev || []).map(x => {
+                    if(String(x.id) !== String(r.id)) return x;
+                    const exs = Array.isArray(x.exs) ? x.exs : [];
+                    return { ...x, exs: exs.filter((_, idx) => idx !== i) };
+                  }));
+                }} className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/10 text-white/80 font-black">🗑</button>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex gap-3">
+            <button onClick={() => setModal({ type: 'exercise-select', target: 'routine', data: r.id })} className="flex-1 py-4 bg-indigo-600 rounded-2xl font-black uppercase text-[10px] shadow-xl border border-indigo-400/20">+ Aggiungi esercizio</button>
+            <button onClick={() => setModal({type:null,data:null})} className="flex-1 py-4 bg-white text-black rounded-2xl font-black uppercase text-[10px]">Salva</button>
+          </div>
+          <button onClick={() => { setModal({type:null,data:null}); startWorkout(r); }} className="mt-3 w-full py-4 bg-white/[0.08] border border-white/12 rounded-2xl font-black uppercase text-[10px] text-white/80 active:scale-[0.98]">Avvia workout da questa scheda</button>
+        </div>
+      </div>
+    );
+  })()
+)}
+{modal && modal.type === 'history' && modal.data && (
             <div className="fixed inset-0 z-[3500] bg-black/92 backdrop-blur-xl p-6 overflow-y-auto view-animate">
               <div className="max-w-md mx-auto space-y-4">
                 <div className="flex justify-between items-center">
@@ -1095,7 +1077,6 @@ const finishWorkout = () => {
                     <Icon name="x" size={24}/>
                   </button>
                 </div>
-
                 <div className="bg-white/[0.06] border border-white/15 p-5 rounded-[2rem] space-y-4 shadow-xl">
                   {(modal.data.exercises || []).map((ex, exI) => (
                     <div key={exI} className="space-y-2">
@@ -1108,7 +1089,6 @@ const finishWorkout = () => {
                           Rest {ex.rest || 90}s
                         </div>
                       </div>
-
                       <div className="space-y-2">
                         {(ex.sets || []).map((s, sI) => (
                           <div key={sI} className="grid grid-cols-12 gap-2 items-center bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2">
@@ -1123,7 +1103,6 @@ const finishWorkout = () => {
                     </div>
                   ))}
                 </div>
-
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => {
@@ -1143,44 +1122,38 @@ const finishWorkout = () => {
                       };
                       setActiveWorkout(ws);
                       setActiveTab('workout');
-                      setModal({type:null});
+                      setModal({type:null,data:null});
                     }}
                     className="py-4 bg-white text-black rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 shadow-lg"
                   >
                     Ripeti
                   </button>
-
                   <button
                     onClick={() => setModal({type:'rename', mode:'history', data:{ id: modal.data?.id, current: modal.data?.name || '' }})}
                     className="py-4 bg-white/5 border border-white/15 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95"
                   >
                     Rinomina
                   </button>
-
                   <button
                     onClick={() => setModal({type:'confirm', confirmAction: () => {
                       const ts = modal.data.startTime || null;
                       const iso = modal.data.date || null;
                       setHistory(prev => (prev || []).filter(h => h.id !== modal.data.id));
-                      setModal({type:null});
+                      setModal({type:null,data:null});
                     }, data: "Eliminare questo allenamento dalla cronologia?"})}
                     className="py-4 bg-red-600 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 shadow-lg"
                   >
                     Elimina
                   </button>
                 </div>
-
                 <p className="text-[9px] font-black uppercase text-white/20 tracking-widest text-center pt-2">
                   Nota: l'eliminazione è definitiva (backup consigliato).
                 </p>
               </div>
             </div>
           )}
-
-
-
           {/* MODAL RENAME */}
-          {modal.type === 'rename' && (
+          {modal && modal.type === 'rename' && (
             <div className="fixed inset-0 z-[4100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6 view-animate">
               <div className="glass p-7 w-full max-w-sm space-y-5 text-center shadow-2xl border-white/10">
                 <p className="text-[11px] font-black uppercase tracking-widest text-white/60">Rinomina</p>
@@ -1199,7 +1172,7 @@ const finishWorkout = () => {
                       if (!val) return;
                       if (modal.mode === 'active') renameActiveWorkout(val);
                       if (modal.mode === 'history') renameHistoryWorkout(modal.data?.id, val);
-                      setModal({type:null});
+                      setModal({type:null,data:null});
                     }}
                     className="flex-1 py-3 bg-indigo-600 rounded-xl text-[10px] font-black uppercase text-white shadow-xl shadow-indigo-600/30"
                   >
@@ -1209,20 +1182,18 @@ const finishWorkout = () => {
               </div>
             </div>
           )}
-
 {/* MODAL CONFIRM */}
-          {modal.type === 'confirm' && (
+          {modal && modal.type === 'confirm' && (
             <div className="fixed inset-0 z-[4000] bg-black/90 backdrop-blur-xl flex items-center justify-center p-8 view-animate">
               <div className="glass p-8 w-full max-w-xs space-y-6 text-center shadow-2xl border-white/10">
                 <p className="text-sm font-bold uppercase text-white/80 leading-relaxed">{modal.data}</p>
                 <div className="flex gap-3">
                   <button onClick={() => setModal({type:null})} className="flex-1 py-3 bg-white/5 rounded-xl text-[10px] font-black uppercase">No</button>
-                  <button onClick={() => { modal.confirmAction(); setModal({type:null}); }} className="flex-1 py-3 bg-indigo-600 rounded-xl text-[10px] font-black uppercase text-white shadow-xl shadow-indigo-600/30">Si</button>
+                  <button onClick={() => { modal.confirmAction(); setModal({type:null,data:null}); }} className="flex-1 py-3 bg-indigo-600 rounded-xl text-[10px] font-black uppercase text-white shadow-xl shadow-indigo-600/30">Si</button>
                 </div>
               </div>
             </div>
           )}
-
           {/* REST TIMER */}
           <div className={`fixed top-12 left-1/2 -translate-x-1/2 w-[92%] max-w-sm z-[3000] bg-[#0A0A0A] border-2 border-indigo-500/60 p-6 rounded-[2.5rem] flex items-center justify-between shadow-[0_50px_100px_rgba(0,0,0,0.95)] transition-all duration-500 ${isTimerOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 -translate-y-12 pointer-events-none'}`}>
             <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -1234,7 +1205,6 @@ const finishWorkout = () => {
         </div>
       );
     }
-
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
         
@@ -1242,7 +1212,6 @@ const finishWorkout = () => {
         (function(){
             if (!('serviceWorker' in navigator)) return;
             window.__AF_SW_UPDATE_READY__ = false;
-
             function showUpdateToast(){
                 // Minimal toast
                 var id = '__af_update__';
@@ -1254,7 +1223,6 @@ const finishWorkout = () => {
                 document.body.appendChild(el);
                 document.getElementById('__af_reload__').onclick = function(){ location.reload(); };
             }
-
             navigator.serviceWorker.register('./service-worker.js').then(function(reg){
                 // If there's an already waiting SW, show toast
                 if (reg.waiting) {
@@ -1277,7 +1245,6 @@ const finishWorkout = () => {
             }).catch(function(e){
                 console.log('SW register failed', e);
             });
-
             // If SW takes control (after skipWaiting + claim), reload once
             var reloaded = false;
             navigator.serviceWorker.addEventListener('controllerchange', function(){
@@ -1286,7 +1253,6 @@ const finishWorkout = () => {
                 location.reload();
             });
         })();
-
   </script>
 <script>
     if ('serviceWorker' in navigator) {
