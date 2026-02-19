@@ -21,7 +21,7 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Avoid @latest for stability -->
-  <script src="https://unpkg.com/lucide@0.542.0"></script>
+  <script src="https://unpkg.com/lucide@0.542.0/dist/umd/lucide.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
 
   <style>
@@ -156,6 +156,47 @@ useEffect(() => {
       const [searchQuery, setSearchQuery] = useState('');
       const [expandedCats, setExpandedCats] = useState({});
       const [sessionDuration, setSessionDuration] = useState("00:00:00");
+
+            const [installState, setInstallState] = useState({ canInstall: false, shown: false, reason: "" });
+            const deferredPromptRef = useRef(null);
+
+            useEffect(() => {
+                // Installability hook (Chrome/Android)
+                const onBip = (e) => {
+                    e.preventDefault();
+                    deferredPromptRef.current = e;
+                    setInstallState({ canInstall: true, shown: true, reason: "" });
+                };
+                window.addEventListener('beforeinstallprompt', onBip);
+
+                // Basic diagnostics after load
+                setTimeout(() => {
+                    const hasSW = 'serviceWorker' in navigator;
+                    const controlled = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
+                    const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+                    // If canInstall is false and we're not standalone, give a hint
+                    setInstallState(prev => {
+                        if (prev.canInstall || isStandalone) return prev;
+                        let reason = "";
+                        if (!hasSW) reason = "Service worker non supportato (browser).";
+                        else if (!controlled) reason = "Service worker non controlla la pagina (cache/registrazione/scope).";
+                        else reason = "Chrome non ha ancora emesso il prompt (serve 2 visite o criteri di engagement).";
+                        return { ...prev, shown: true, reason };
+                    });
+                }, 1200);
+
+                return () => window.removeEventListener('beforeinstallprompt', onBip);
+            }, []);
+
+            const triggerInstall = async () => {
+                const dp = deferredPromptRef.current;
+                if (!dp) return;
+                dp.prompt();
+                try { await dp.userChoice; } catch (e) {}
+                deferredPromptRef.current = null;
+                setInstallState({ canInstall: false, shown: true, reason: "Se hai scelto 'Annulla', riprova dal menu Chrome tra poco." });
+            };
+
 
       const fileInputRef = useRef(null);
       const toggleCat = (cat) => setExpandedCats(prev => ({ ...prev, [cat]: !prev[cat] }));
@@ -340,13 +381,30 @@ useEffect(() => {
               <div className="space-y-6 view-animate">
                 <header className="flex justify-between items-center px-1 text-left">
                   <div>
-                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">v5.7.1 patched</p>
+                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">v11.0</p>
                     <h1 className="text-4xl font-black tracking-tighter">AuraFit</h1>
                   </div>
                   <div className="w-12 h-12 bg-white/[0.1] border border-white/20 flex items-center justify-center rounded-2xl shadow-xl shadow-indigo-500/10">
                     <Icon name="dna" className="text-indigo-400" />
                   </div>
                 </header>
+                                {installState.shown && !window.matchMedia('(display-mode: standalone)').matches && (
+                                  <div className="mt-3 px-1">
+                                    {installState.canInstall ? (
+                                      <button
+                                        onClick={triggerInstall}
+                                        className="w-full bg-indigo-600 text-white py-3 rounded-[1.2rem] font-black uppercase text-[10px] tracking-widest shadow-xl shadow-indigo-600/30 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                      >
+                                        <Icon name="download" size={18} /> Installa AuraFit
+                                      </button>
+                                    ) : (
+                                      <div className="bg-white/[0.06] border border-white/10 rounded-[1.2rem] p-3 text-[10px] font-black uppercase text-white/40 tracking-widest">
+                                        Install: {installState.reason || "non disponibile ora. Prova: menu ⋮ → 'Aggiungi a schermata Home' (se si apre senza barra URL, è installata)."} 
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
 
                 <div className="grid grid-cols-2 gap-3 text-left">
                   <div className="bg-white/[0.08] border border-white/10 p-5 rounded-[1.8rem] shadow-xl">
@@ -369,12 +427,24 @@ useEffect(() => {
                 <div className="space-y-3 pt-2 text-left">
                   <h3 className="text-white/40 font-bold text-[11px] uppercase tracking-widest px-2">Cronologia Recente</h3>
                   {history.slice().reverse().map((h, i) => (
-                    <div key={i} onClick={() => setModal({type:\'history\', data:h})} className="bg-white/[0.07] border border-white/15 p-5 rounded-[1.5rem] flex justify-between items-center active:bg-white/20 transition-all cursor-pointer shadow-lg">
+                    <div key={h.id || i} onClick={() => setModal({type:'history', data:h})} className="bg-white/[0.07] border border-white/15 p-5 rounded-[1.5rem] flex justify-between items-center active:bg-white/20 transition-all cursor-pointer shadow-lg">
                       <div className="min-w-0 flex-1">
                         <p className="font-bold uppercase text-sm truncate pr-2">{h.name}</p>
                         <p className="text-[10px] font-black text-white/30 uppercase">{h.vol} KG • {h.duration || '--'}</p>
                       </div>
-                      <Icon name="chevron-right" className="text-white/20" size={18} />
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setModal({type:'confirm', confirmAction: () => setHistory(prev => (prev || []).filter(x => (h.id && x.id !== h.id) || (!h.id && !((x.startTime && h.startTime && x.startTime===h.startTime) || (x.date && h.date && x.date===h.date))))), data: "Eliminare questo allenamento dalla cronologia?"});
+                          }}
+                          className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center active:bg-red-600/40"
+                          aria-label="Elimina"
+                        >
+                          <Icon name="trash-2" size={18} className="text-white/30" />
+                        </button>
+                        <Icon name="chevron-right" className="text-white/20" size={18} />
+                      </div>
                     </div>
                   ))}
                 </div>

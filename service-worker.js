@@ -1,7 +1,7 @@
 /* AuraFit Service Worker (simple precache) */
-const CACHE_NAME = 'aurafit-cache-v4';
+const CACHE_NAME = 'aurafit-cache-v7';
 const PRECACHE_URLS = [
-  './index.html?ver=8',
+  './index.html?ver=11',
   './',
   './index.html',
   './manifest.json',
@@ -11,7 +11,7 @@ const PRECACHE_URLS = [
   './apple-touch-icon.png',
   './favicon-32.png',
   './favicon-16.png',
-  'https://unpkg.com/react@18/umd/react.production.min.js', 'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js', 'https://unpkg.com/@babel/standalone/babel.min.js', 'https://cdn.tailwindcss.com', 'https://unpkg.com/lucide@0.542.0', 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap'
+  'https://unpkg.com/react@18/umd/react.production.min.js', 'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js', 'https://unpkg.com/@babel/standalone/babel.min.js', 'https://cdn.tailwindcss.com', 'https://unpkg.com/lucide@0.542.0/dist/umd/lucide.min.js', 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap'
 ];
 
 self.addEventListener('install', (event) => {
