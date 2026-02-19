@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
-<title>Aura Fit - Clinical OS</title>
+<title>PasseFIT - Clinical OS</title>
 <link href="./manifest.json" rel="manifest"/>
 <link href="./apple-touch-icon.png" rel="apple-touch-icon"/>
 <meta content="yes" name="mobile-web-app-capable"/>
@@ -75,7 +75,7 @@
 </style>
 </head>
 <body>
-<div id="root"><div style="padding:24px;color:rgba(255,255,255,0.6);font:14px system-ui; text-align:center;">Avvio AuraFit...</div></div>
+<div id="root"><div style="padding:24px;color:rgba(255,255,255,0.6);font:14px system-ui; text-align:center;">Avvio PasseFIT...</div></div>
 <script>
 (function(){
   function box(msg){
@@ -96,18 +96,25 @@
 </script>
 <script type="text/babel">    
     const { useState, useEffect, useMemo, useRef } = React;
-    const APP_VERSION = 'v16.4-pixel-perfect';
+    const APP_VERSION = 'v1.0-passefit';
 
     const Icon = ({ name, size = 24, className = "" }) => {
+      const spanRef = useRef(null);
       useEffect(() => {
-        if (window.lucide) window.lucide.createIcons();
+        if (window.lucide && spanRef.current) {
+          window.lucide.createIcons({
+            root: spanRef.current,
+            attrs: { width: size, height: size }
+          });
+        }
       }, [name, size, className]);
 
       return (
         <span 
+          ref={spanRef}
           className={`inline-flex items-center justify-center pointer-events-none ${className}`}
-          style={{ width: size, height: size, flexShrink: 0 }}
-          dangerouslySetInnerHTML={{ __html: `<i data-lucide="${name}" style="width: ${size}px; height: ${size}px;"></i>` }} 
+          style={{ width: size, height: size, minWidth: size, minHeight: size, flexShrink: 0 }}
+          dangerouslySetInnerHTML={{ __html: `<i data-lucide="${name}"></i>` }} 
         />
       );
     };
@@ -331,6 +338,16 @@
           });
           return out;
       }, [customs]);
+
+      const muscleMap = useMemo(() => {
+          const map = {};
+          Object.entries(mergedLibrary).forEach(([cat, exs]) => {
+              exs.forEach(ex => {
+                  map[ex.toLowerCase()] = cat;
+              });
+          });
+          return map;
+      }, [mergedLibrary]);
 
       const exCardRefs = useRef([]);
       const dragRef = useRef({ active:false, from:-1, over:-1, pointerId:null });
@@ -611,10 +628,10 @@
                 <header className="flex justify-between items-center px-2">
                   <div>
                     <p className="text-indigo-400 text-[10px] font-extrabold uppercase tracking-[0.3em]">{APP_VERSION}</p>
-                    <h1 className="text-[2.5rem] font-black tracking-tight mt-1 text-white">AuraFit</h1>
+                    <h1 className="text-[2.5rem] font-black tracking-tight mt-1 text-white">PasseFIT</h1>
                   </div>
                   <div className="w-14 h-14 surface-card flex items-center justify-center rounded-[1.2rem] shadow-2xl">
-                    <Icon name="dna" size={26} className="text-indigo-400" />
+                    <Icon name="dumbbell" size={26} className="text-indigo-400" />
                   </div>
                 </header>
 
@@ -684,7 +701,7 @@
                     <button onClick={() => setModal({type:'confirm', confirmAction: () => {setActiveWorkout(null); setActiveTab('home');}, data: "Annullare sessione?"})} className="text-gray-400 text-[11px] font-extrabold uppercase bg-white/5 px-4 py-2.5 rounded-full border border-white/10 active:bg-white/10">Esci</button>
                   </div>
                   <div className="flex-1 text-center min-w-0">
-                    <div onClick={() => setModal({type:'rename', mode:'active', data:{ current: activeWorkout?.name || '' }})} className="inline-flex items-center justify-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full mb-2 active:bg-white/10">
+                    <div onClick={() => setModal({type:'rename', mode:'active', data:{ current: activeWorkout?.name || '' }})} className="inline-flex items-center justify-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full mb-2 active:bg-white/10 cursor-pointer">
                         <Icon name="pencil" size={12} className="text-indigo-400" />
                         <span className="text-[10px] font-extrabold text-indigo-300 uppercase tracking-widest truncate max-w-[120px]">{activeWorkout.name}</span>
                     </div>
@@ -701,7 +718,7 @@
                       <div key={exI} ref={(el)=>{exCardRefs.current[exI]=el;}} className={`surface-card p-6 rounded-[2.2rem] space-y-5 shadow-lg ${dragUI.active && dragUI.over===exI ? "ring-2 ring-indigo-500" : ""}`}>
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex-1 min-w-0">
-                            <h3 onClick={() => { const nn = prompt("Rinomina esercizio", ex.name); if(nn){ const n=[...activeWorkout.exercises]; n[exI].name = nn.trim(); setActiveWorkout({...activeWorkout, exercises:n}); } }} className="text-[1.3rem] font-black uppercase text-white leading-tight break-words active:text-indigo-300">{ex.name}</h3>
+                            <h3 onClick={() => { const nn = prompt("Rinomina esercizio", ex.name); if(nn){ const n=[...activeWorkout.exercises]; n[exI].name = nn.trim(); setActiveWorkout({...activeWorkout, exercises:n}); } }} className="text-[1.3rem] font-black uppercase text-white leading-tight break-words active:text-indigo-300 cursor-pointer">{ex.name}</h3>
                             <div className="flex items-center gap-2 mt-2 bg-black/40 inline-flex px-3 py-1.5 rounded-lg border border-white/5">
                               <Icon name="clock" size={12} className="text-indigo-400" />
                               <input type="number" value={ex.rest} onChange={(e) => { const n = deepClone(activeWorkout.exercises); n[exI].rest = e.target.value; setActiveWorkout({...activeWorkout, exercises: n}); }} className="w-8 bg-transparent text-[11px] font-black text-white outline-none text-center" />
@@ -709,8 +726,8 @@
                             </div>
                           </div>
                           <div className="flex flex-col items-center gap-2">
-                            <button onClick={() => { const n = activeWorkout.exercises.filter((_, i) => i !== exI); setActiveWorkout({...activeWorkout, exercises: n}); }} className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 active:bg-red-500/30"><Icon name="trash-2" size={18}/></button>
-                            <button onPointerDown={onDragPointerDown(exI)} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 touch-none active:bg-white/10 cursor-grab"><Icon name="grip-horizontal" size={18}/></button>
+                            <button onClick={() => { const n = activeWorkout.exercises.filter((_, i) => i !== exI); setActiveWorkout({...activeWorkout, exercises: n}); }} className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 active:bg-red-500/30 shrink-0"><Icon name="trash-2" size={18}/></button>
+                            <button onPointerDown={onDragPointerDown(exI)} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 touch-none active:bg-white/10 cursor-grab shrink-0"><Icon name="grip-horizontal" size={18}/></button>
                           </div>
                         </div>
                         
@@ -763,17 +780,43 @@
                 <div className="space-y-4">
                   {routines.map((r, i) => (
                     <div key={i} className="surface-card p-6 rounded-[2.2rem] space-y-5 shadow-lg">
-                      <div className="flex justify-between items-center">
-                          <h3 className="text-xl font-black uppercase text-white tracking-tight">{r.name}</h3>
-                          <button onClick={() => setModal({type:'confirm', confirmAction: () => setRoutines(routines.filter((_,idx)=>idx!==i)), data: `Eliminare ${r.name}?`})} className="text-gray-500 bg-white/5 p-2 rounded-full"><Icon name="trash-2" size={18}/></button>
+                      <div className="flex justify-between items-start gap-3">
+                          <div className="min-w-0 flex-1 pr-2">
+                              <h3 className="text-[1.3rem] font-black uppercase text-white tracking-tight mb-3 truncate">{r.name}</h3>
+                              {r.exs && r.exs.length > 0 ? (
+                                  <div className="space-y-2">
+                                      {Object.entries(
+                                          r.exs.reduce((acc, ex) => {
+                                              const safeEx = ex || '';
+                                              if(!safeEx) return acc;
+                                              const cat = muscleMap[safeEx.toLowerCase()] || 'Altro';
+                                              if (!acc[cat]) acc[cat] = [];
+                                              acc[cat].push(safeEx);
+                                              return acc;
+                                          }, {})
+                                      ).map(([cat, list]) => (
+                                          <div key={cat} className="break-words leading-snug">
+                                              <span className="text-indigo-400 uppercase text-[9px] tracking-widest font-black mr-2">{cat}</span>
+                                              <span className="text-gray-300 text-[12px] font-bold">{list.join(' • ')}</span>
+                                          </div>
+                                      ))}
+                                  </div>
+                              ) : (
+                                  <p className="text-[12px] font-bold text-gray-600">Nessun esercizio.</p>
+                              )}
+                          </div>
+                          <button onClick={() => setModal({type:'confirm', confirmAction: () => setRoutines(routines.filter((_,idx)=>idx!==i)), data: `Eliminare ${r.name}?`})} className="text-gray-500 bg-white/5 p-2.5 rounded-full shrink-0 active:bg-red-500/20 active:text-red-400 transition-colors"><Icon name="trash-2" size={18}/></button>
                       </div>
-                      <div className="flex gap-3">
+                      <div className="flex gap-3 pt-3">
                         <button onClick={() => setModal({ type: 'edit-routine', data: r.id })} className="flex-1 bg-white/5 border border-white/10 py-4 rounded-full font-bold uppercase text-[11px] text-gray-300 active:bg-white/10">Modifica</button>
                         <button onClick={() => startWorkout(r)} className="flex-1 bg-indigo-500 py-4 rounded-full font-bold uppercase text-[11px] text-white shadow-lg active:scale-[0.98]">Avvia</button>
                       </div>
                     </div>
                   ))}
-                  <button onClick={() => setModal({type: 'name-routine'})} className="w-full surface-card border-dashed border-white/20 py-10 flex flex-col items-center gap-3 text-gray-400 rounded-[2.2rem] active:bg-white/5"><Icon name="plus-circle" size={32}/> <span className="text-[12px] font-bold uppercase tracking-widest">Nuova Scheda</span></button>
+                  <button onClick={() => setModal({type: 'name-routine'})} className="w-full surface-card border-dashed border-white/20 py-10 flex flex-col items-center gap-3 text-gray-400 rounded-[2.2rem] active:bg-white/5">
+                    <Icon name="plus-circle" size={32}/> 
+                    <span className="text-[12px] font-bold uppercase tracking-widest">Nuova Scheda</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -787,7 +830,7 @@
                     <button onClick={() => {
                       const data = JSON.stringify({ version: APP_VERSION, exportedAt: new Date().toISOString(), history, routines, customs }, null, 2);
                       const blob = new Blob([data], {type: 'application/json'}); const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a'); a.href = url; a.download = `aurafit_backup.json`;
+                      const a = document.createElement('a'); a.href = url; a.download = `passefit_backup.json`;
                       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
                     }} className="w-full bg-white text-black py-4 rounded-full font-bold uppercase text-[12px] flex items-center justify-center gap-3 active:scale-[0.98]"><Icon name="download" size={18} /> Backup Dati</button>
                     
@@ -819,10 +862,64 @@
               <button onClick={() => setActiveTab('stats')} className={`flex-1 flex justify-center py-3 rounded-full transition-all ${activeTab === 'stats' ? 'bg-indigo-500 text-white shadow-md' : 'text-gray-500'}`}><Icon name="database" size={22} /></button>
             </div>
           </nav>
+
+          {/* EDITOR SCHEDA */}
+          {modal && modal.type === 'edit-routine' && (
+            (() => {
+              const r = (routines || []).find(x => String(x.id) === String(modal.data));
+              if(!r) return (
+                <div className="fixed inset-0 z-[2000] bg-[#000000]/95 backdrop-blur-xl p-5 flex items-center justify-center">
+                    <span className="text-gray-500 font-bold text-xs uppercase animate-pulse">Caricamento scheda...</span>
+                </div>
+              );
+              return (
+                <div className="fixed inset-0 z-[2000] bg-[#000000]/95 backdrop-blur-xl p-5 flex flex-col animate-in fade-in">
+                  <div className="flex justify-between items-center mb-6 pt-4 text-left">
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase text-indigo-400 tracking-widest">Configura Scheda</p>
+                      <h2 className="text-[2rem] font-black uppercase text-white tracking-tight truncate max-w-[250px]">{r.name}</h2>
+                    </div>
+                    <button onClick={(e) => { e.preventDefault(); setModal({type:null,data:null}); }} className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white active:scale-95 shrink-0"><Icon name="x" size={24}/></button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto space-y-3 pb-32">
+                    {(r.exs || []).length === 0 && (
+                      <div className="surface-card p-8 rounded-[2rem] text-center border-dashed border-white/10">
+                        <Icon name="list-plus" size={32} className="text-gray-500 mx-auto mb-3" />
+                        <p className="text-gray-400 text-[13px] font-bold">Nessun esercizio presente.<br/>Costruisci la tua scheda.</p>
+                      </div>
+                    )}
+                    {(r.exs || []).map((ex, i) => (
+                      <div key={i} className="surface-card p-4 rounded-[1.5rem] flex items-center gap-3 shadow-lg">
+                        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-gray-500 font-black text-[10px] shrink-0">{i+1}</div>
+                        <span className="text-white font-bold text-[13px] uppercase truncate flex-1">{ex}</span>
+                        <button onClick={() => {
+                          setRoutines(prev => (prev || []).map(x => {
+                            if(String(x.id) !== String(r.id)) return x;
+                            return { ...x, exs: (x.exs || []).filter((_, idx) => idx !== i) };
+                          }));
+                        }} className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 active:bg-red-500/30 shrink-0"><Icon name="trash-2" size={16} /></button>
+                      </div>
+                    ))}
+                    
+                    <button onClick={(e) => { e.preventDefault(); setModal({ type: 'exercise-select', target: 'routine', data: r.id }); }} className="w-full bg-[#131316] border-2 border-dashed border-indigo-500/30 py-8 flex flex-col items-center gap-2 text-indigo-400 rounded-[2rem] active:bg-indigo-500/10 transition-all mt-4">
+                      <Icon name="plus" size={24} />
+                      <span className="font-bold text-[11px] uppercase tracking-widest">Aggiungi Esercizio</span>
+                    </button>
+                  </div>
+
+                  <div className="mt-auto pt-4 pb-6 flex gap-3 bg-gradient-to-t from-black via-black to-transparent">
+                    <button onClick={(e) => { e.preventDefault(); setModal({type:null,data:null}); }} className="w-full py-4 bg-indigo-500 text-white rounded-full font-bold uppercase text-[12px] shadow-lg shadow-indigo-500/30 active:scale-95">Salva e Chiudi</button>
+                  </div>
+                </div>
+              );
+            })()
+          )}
           
+          {/* MODAL LIBRERIA */}
           {modal && modal.type === 'exercise-select' && (
-            <div className="fixed inset-0 z-[1000] bg-[#000000]/95 backdrop-blur-xl p-5 flex flex-col overflow-y-auto animate-in fade-in">
-              <div className="flex justify-between items-center mb-6 pt-4"><h2 className="text-[2rem] font-black uppercase text-white tracking-tight">Libreria</h2><button onClick={() => setModal({type:null})} className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white"><Icon name="x" size={24}/></button></div>
+            <div className="fixed inset-0 z-[3000] bg-[#000000]/98 backdrop-blur-xl p-5 flex flex-col overflow-y-auto animate-in fade-in">
+              <div className="flex justify-between items-center mb-6 pt-4"><h2 className="text-[2rem] font-black uppercase text-white tracking-tight">Libreria</h2><button onClick={(e) => { e.preventDefault(); setModal(modal?.target === 'routine' ? { type: 'edit-routine', data: modal.data } : {type:null}); }} className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white shrink-0"><Icon name="x" size={24}/></button></div>
               
               <div className="relative mb-6">
                 <Icon name="search" size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -830,7 +927,7 @@
               </div>
 
               <div className="mb-6 space-y-3">
-                <button onClick={() => setCustomForm(f => ({...f, open: !f.open}))} className="w-full bg-[#1C1C21] border border-white/10 rounded-3xl px-5 py-4 flex items-center justify-between text-left">
+                <button onClick={(e) => { e.preventDefault(); setCustomForm(f => ({...f, open: !f.open})); }} className="w-full bg-[#1C1C21] border border-white/10 rounded-3xl px-5 py-4 flex items-center justify-between text-left">
                   <div className="flex items-center gap-3"><Icon name="plus-circle" size={20} className="text-indigo-400" /><span className="text-[11px] font-bold uppercase tracking-widest text-gray-300">Nuovo Personalizzato</span></div>
                   <Icon name="chevron-down" size={20} className={`text-indigo-400 transition-transform ${customForm.open ? 'rotate-180' : ''}`} />
                 </button>
@@ -843,7 +940,7 @@
                       </select>
                       <input value={customForm.name} onChange={(e) => setCustomForm(f => ({...f, name: e.target.value}))} placeholder="Es. Pulldown monolaterale" className="w-full bg-[#131316] border border-white/10 rounded-2xl px-4 py-3 text-[14px] font-bold text-white outline-none" />
                     </div>
-                    <button onClick={() => { if(addCustomExercise(customForm.cat, customForm.name)) setCustomForm(f => ({...f, name:''})); }} className="w-full bg-indigo-500 text-white py-3.5 rounded-2xl font-bold uppercase text-[12px] tracking-wider">Salva in Libreria</button>
+                    <button onClick={(e) => { e.preventDefault(); if(addCustomExercise(customForm.cat, customForm.name)) setCustomForm(f => ({...f, name:''})); }} className="w-full bg-indigo-500 text-white py-3.5 rounded-2xl font-bold uppercase text-[12px] tracking-wider">Salva in Libreria</button>
                   </div>
                 )}
               </div>
@@ -859,7 +956,16 @@
                       {isOpen && (
                         <div className="p-3 space-y-2 bg-[#131316]">
                           {filtered.map(ex => (
-                            <button key={ex} onClick={() => { (modal?.target === 'routine' ? safeAddExerciseToRoutine(modal.data, ex) : safeAddExerciseToActive(ex)); setModal(modal?.target === 'routine' ? { type: 'edit-routine', data: modal.data } : null); }} className="w-full p-4 text-left font-bold bg-[#1C1C21] rounded-2xl flex justify-between items-center uppercase text-[12px] text-gray-200 active:bg-indigo-500">
+                            <button key={ex} onClick={(e) => { 
+                              e.preventDefault();
+                              if (modal?.target === 'routine') {
+                                safeAddExerciseToRoutine(modal.data, ex);
+                                setModal({ type: 'edit-routine', data: modal.data });
+                              } else {
+                                safeAddExerciseToActive(ex);
+                                setModal(null);
+                              }
+                            }} className="w-full p-4 text-left font-bold bg-[#1C1C21] rounded-2xl flex justify-between items-center uppercase text-[12px] text-gray-200 active:bg-indigo-500">
                               <span>{ex}</span><Icon name="plus" size={18} className="text-indigo-400" />
                             </button>
                           ))}
@@ -878,8 +984,18 @@
                 <h2 className="text-[1.5rem] font-black uppercase text-center text-white">Nuova Scheda</h2>
                 <input id="rn-in" type="text" placeholder="Es. Upper Body" className="w-full text-lg font-bold bg-[#131316] border border-white/10 rounded-2xl p-4 text-center text-white outline-none focus:border-indigo-500" autoFocus />
                 <div className="flex gap-3">
-                  <button onClick={() => setModal({type:null})} className="flex-1 py-3.5 bg-white/5 rounded-full text-[11px] font-bold uppercase text-gray-400">Annulla</button>
-                  <button onClick={() => { const val = document.getElementById('rn-in').value?.trim(); if(val) { const r = { id: String(Date.now()), name: val, exs: [], createdAt: Date.now() }; setRoutines([r, ...routines]); setModal({ type: 'edit-routine', data: r.id }); } }} className="flex-1 py-3.5 bg-indigo-500 text-white rounded-full text-[11px] font-bold uppercase">Crea</button>
+                  <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setModal({type:null}); }} className="flex-1 py-3.5 bg-white/5 rounded-full text-[11px] font-bold uppercase text-gray-400">Annulla</button>
+                  <button onClick={(e) => { 
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const val = document.getElementById('rn-in').value?.trim(); 
+                    if(val) { 
+                      const newId = String(Date.now());
+                      const r = { id: newId, name: val, exs: [], createdAt: Date.now() }; 
+                      setRoutines(prev => [r, ...(prev || [])]); 
+                      setModal({ type: 'edit-routine', data: newId }); 
+                    } 
+                  }} className="flex-1 py-3.5 bg-indigo-500 text-white rounded-full text-[11px] font-bold uppercase">Crea</button>
                 </div>
               </div>
             </div>
@@ -890,8 +1006,8 @@
               <div className="bg-[#1C1C21] border border-white/10 p-8 w-full max-w-xs rounded-[2.5rem] space-y-6 text-center shadow-2xl">
                 <p className="text-[15px] font-bold text-gray-200">{modal.data}</p>
                 <div className="flex gap-3">
-                  <button onClick={() => setModal({type:null})} className="flex-1 py-3.5 bg-white/5 rounded-full text-[12px] font-bold uppercase text-gray-400">No</button>
-                  <button onClick={() => { modal.confirmAction(); setModal({type:null,data:null}); }} className="flex-1 py-3.5 bg-indigo-500 rounded-full text-[12px] font-bold uppercase text-white">Sì</button>
+                  <button onClick={(e) => { e.preventDefault(); setModal({type:null}); }} className="flex-1 py-3.5 bg-white/5 rounded-full text-[12px] font-bold uppercase text-gray-400">No</button>
+                  <button onClick={(e) => { e.preventDefault(); modal.confirmAction(); setModal({type:null,data:null}); }} className="flex-1 py-3.5 bg-indigo-500 rounded-full text-[12px] font-bold uppercase text-white">Sì</button>
                 </div>
               </div>
             </div>
@@ -908,7 +1024,7 @@
                       {new Date(modal.data.date).toLocaleDateString()} • Vol {modal.data.vol || 0} • Durata {modal.data.duration || '--'}
                     </p>
                   </div>
-                  <button onClick={() => setModal({type:null})} className="w-12 h-12 bg-white/5 border border-white/10 rounded-full flex items-center justify-center text-white active:bg-white/10">
+                  <button onClick={(e) => { e.preventDefault(); setModal({type:null}); }} className="w-12 h-12 bg-white/5 border border-white/10 rounded-full flex items-center justify-center text-white active:bg-white/10 shrink-0">
                     <Icon name="x" size={24}/>
                   </button>
                 </div>
@@ -940,7 +1056,8 @@
                 </div>
                 <div className="grid grid-cols-2 gap-3 mt-4">
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
                       const src = modal.data;
                       const ws = {
                         id: genId(),
@@ -963,16 +1080,19 @@
                     Ripeti Workout
                   </button>
                   <button
-                    onClick={() => setModal({type:'rename', mode:'history', data:{ id: modal.data?.id, current: modal.data?.name || '' }})}
+                    onClick={(e) => { e.preventDefault(); setModal({type:'rename', mode:'history', data:{ id: modal.data?.id, current: modal.data?.name || '' }}); }}
                     className="py-4 bg-white/5 border border-white/10 text-white rounded-full font-bold uppercase text-[11px] tracking-wider active:bg-white/10"
                   >
                     Rinomina
                   </button>
                   <button
-                    onClick={() => setModal({type:'confirm', confirmAction: () => {
-                      setHistory(prev => (prev || []).filter(h => h.id !== modal.data.id));
-                      setModal({type:null,data:null});
-                    }, data: "Eliminare questo allenamento dalla cronologia?"})}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setModal({type:'confirm', confirmAction: () => {
+                        setHistory(prev => (prev || []).filter(h => h.id !== modal.data.id));
+                        setModal({type:null,data:null});
+                      }, data: "Eliminare questo allenamento dalla cronologia?"});
+                    }}
                     className="col-span-2 py-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full font-bold uppercase text-[11px] tracking-wider active:bg-red-500/20 mt-2"
                   >
                     Elimina Sessione
@@ -994,9 +1114,10 @@
                   autoFocus
                 />
                 <div className="flex gap-3">
-                  <button onClick={() => setModal({type:null})} className="flex-1 py-3.5 bg-white/5 rounded-full text-[12px] font-bold uppercase text-gray-400">Annulla</button>
+                  <button onClick={(e) => { e.preventDefault(); setModal({type:null}); }} className="flex-1 py-3.5 bg-white/5 rounded-full text-[12px] font-bold uppercase text-gray-400">Annulla</button>
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
                       const val = (document.getElementById('rename-in')?.value || '').trim();
                       if (!val) return;
                       if (modal.mode === 'active') renameActiveWorkout(val);
@@ -1017,7 +1138,7 @@
               <div className={`font-black text-[2.5rem] tabular-nums leading-none ${timerVal <= 10 ? 'animate-pulse text-red-400' : 'text-indigo-400'}`}>{Math.floor(timerVal/60)}:{(timerVal%60).toString().padStart(2,'0')}</div>
               <p className="text-[10px] font-bold uppercase text-gray-400 leading-tight">Recupero<br/>Attivo</p>
             </div>
-            <button onClick={() => { setIsTimerOpen(false); timerEndTimeRef.current = null; setTimerVal(0); }} className="bg-white/5 px-5 py-3 rounded-full text-[11px] font-bold uppercase text-gray-300 border border-white/10 active:bg-white/10">Salta</button>
+            <button onClick={(e) => { e.preventDefault(); setIsTimerOpen(false); timerEndTimeRef.current = null; setTimerVal(0); }} className="bg-white/5 px-5 py-3 rounded-full text-[11px] font-bold uppercase text-gray-300 border border-white/10 active:bg-white/10">Salta</button>
           </div>
 
         </div>
