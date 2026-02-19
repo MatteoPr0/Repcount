@@ -224,130 +224,76 @@ const [expandedCats, setExpandedCats] = useState({});
       const [sessionDuration, setSessionDuration] = useState("00:00:00");
             
             // Drag & drop riordino esercizi (mobile-friendly via Pointer Events)
-            const exCardRefs = useRef([]);
-            const [drag, setDrag] = useState({ active:false, from:null, over:null, y:0 });
-            const dragFromRef = useRef(null);
+// NOTE: implementazione "safe": listeners globali registrati UNA volta, stato in ref per evitare loop/black screen.
+const exCardRefs = useRef([]);
+const dragRef = useRef({ active:false, from:null, over:null, startY:0, currentY:0 });
+const [dragUI, setDragUI] = useState({ active:false, from:null, over:null });
 
-            const onDragStart = (fromIdx) => (ev) => {
-                ev.preventDefault();
-                ev.stopPropagation();
-                dragFromRef.current = fromIdx;
-                const y = (ev.touches?.[0]?.clientY ?? ev.clientY);
-                setDrag({ active:true, from: fromIdx, over: fromIdx, y });
-                if (navigator.vibrate) navigator.vibrate(20);
-            };
+const reorderExercises = (fromIdx, toIdx) => {
+  if (!activeWorkout) return;
+  const exs = [...activeWorkout.exercises];
+  const [moved] = exs.splice(fromIdx, 1);
+  exs.splice(toIdx, 0, moved);
+  setActiveWorkout({ ...activeWorkout, exercises: exs });
+};
 
-            const onDragMove = (clientY) => {
-                const fromIdx = dragFromRef.current;
-                if (fromIdx === null || fromIdx === undefined) return;
-                const refs = exCardRefs.current || [];
-                if (!refs.length) return;
-                let overIdx = fromIdx;
-                for (let i = 0; i < refs.length; i++) {
-                    const el = refs[i];
-                    if (!el) continue;
-                    const r = el.getBoundingClientRect();
-                    const mid = r.top + r.height / 2;
-                    if (clientY < mid) { overIdx = i; break; }
-                    overIdx = i;
-                }
-                setDrag(prev => ({ ...prev, over: overIdx, y: clientY }));
-            };
+const computeOverIndex = (clientY) => {
+  const els = exCardRefs.current.filter(Boolean);
+  if (els.length === 0) return null;
+  let bestIdx = null;
+  let bestDist = Infinity;
+  for (let i = 0; i < els.length; i++) {
+    const r = els[i].getBoundingClientRect();
+    const mid = r.top + r.height / 2;
+    const dist = Math.abs(clientY - mid);
+    if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+  }
+  return bestIdx;
+};
 
-            const commitDrag = () => {
-                const fromIdx = dragFromRef.current;
-                if (fromIdx === null || fromIdx === undefined) return;
-                const overIdx = drag.over ?? fromIdx;
-                setActiveWorkout(prev => {
-                    if (!prev?.exercises) return prev;
-                    const n = [...prev.exercises];
-                    if (overIdx === fromIdx) return prev;
-                    const [moved] = n.splice(fromIdx, 1);
-                    n.splice(overIdx, 0, moved);
-                    return { ...prev, exercises: n };
-                });
-                dragFromRef.current = null;
-                setDrag({ active:false, from:null, over:null, y:0 });
-            };
+const startDrag = (fromIdx) => (ev) => {
+  ev.preventDefault();
+  ev.stopPropagation();
+  const y = (ev.touches?.[0]?.clientY ?? ev.clientY);
+  dragRef.current = { active:true, from:fromIdx, over:fromIdx, startY:y, currentY:y };
+  setDragUI({ active:true, from:fromIdx, over:fromIdx });
+};
 
-            useEffect(() => {
-                const onMove = (e) => {
-                    const fromIdx = dragFromRef.current;
-                    if (fromIdx === null || fromIdx === undefined) return;
-                    const y = (e.touches?.[0]?.clientY ?? e.clientY);
-                    onDragMove(y);
-                };
-                const onUp = () => {
-                    const fromIdx = dragFromRef.current;
-                    if (fromIdx === null || fromIdx === undefined) return;
-                    commitDrag();
-                };
-                window.addEventListener('pointermove', onMove, { passive:false });
-                window.addEventListener('pointerup', onUp, { passive:true });
-                window.addEventListener('touchmove', onMove, { passive:false });
-                window.addEventListener('touchend', onUp, { passive:true });
-                return () => {
-                    window.removeEventListener('pointermove', onMove);
-                    window.removeEventListener('pointerup', onUp);
-                    window.removeEventListener('touchmove', onMove);
-                    window.removeEventListener('touchend', onUp);
-                };
-            }, [drag.over]);
+useEffect(() => {
+  const onMove = (ev) => {
+    if (!dragRef.current.active) return;
+    const y = (ev.touches?.[0]?.clientY ?? ev.clientY);
+    dragRef.current.currentY = y;
+    const over = computeOverIndex(y);
+    if (over !== null && over !== dragRef.current.over) {
+      dragRef.current.over = over;
+      // aggiornamento UI leggero
+      setDragUI(prev => (prev.over === over ? prev : { ...prev, over }));
+    }
+  };
 
+  const onEnd = () => {
+    if (!dragRef.current.active) return;
+    const { from, over } = dragRef.current;
+    dragRef.current.active = false;
+    setDragUI({ active:false, from:null, over:null });
+    if (from !== null && over !== null && from !== over) reorderExercises(from, over);
+  };
 
-            const [installState, setInstallState] = useState({ canInstall: false, shown: false, reason: "" });
-            const deferredPromptRef = useRef(null);
+  window.addEventListener("pointermove", onMove, { passive: true });
+  window.addEventListener("pointerup", onEnd, { passive: true });
+  window.addEventListener("touchmove", onMove, { passive: true });
+  window.addEventListener("touchend", onEnd, { passive: true });
 
-            useEffect(() => {
-                // Installability hook (Chrome/Android)
-                const onBip = (e) => {
-                    e.preventDefault();
-                    deferredPromptRef.current = e;
-                    setInstallState({ canInstall: true, shown: true, reason: "" });
-                };
-                window.addEventListener('beforeinstallprompt', onBip);
-
-                // Basic diagnostics after load
-                setTimeout(() => {
-                    const hasSW = 'serviceWorker' in navigator;
-                    const controlled = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
-                    const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
-                    // If canInstall is false and we're not standalone, give a hint
-                    setInstallState(prev => {
-                        if (prev.canInstall || isStandalone) return prev;
-                        let reason = "";
-                        if (!hasSW) reason = "Service worker non supportato (browser).";
-                        else if (!controlled) reason = "Service worker non controlla la pagina (cache/registrazione/scope).";
-                        else reason = "Chrome non ha ancora emesso il prompt (serve 2 visite o criteri di engagement).";
-                        return { ...prev, shown: true, reason };
-                    });
-                }, 1200);
-
-                return () => window.removeEventListener('beforeinstallprompt', onBip);
-            }, []);
-
-            const triggerInstall = async () => {
-                const dp = deferredPromptRef.current;
-                if (!dp) return;
-                dp.prompt();
-                try { await dp.userChoice; } catch (e) {}
-                deferredPromptRef.current = null;
-                setInstallState({ canInstall: false, shown: true, reason: "Se hai scelto 'Annulla', riprova dal menu Chrome tra poco." });
-            };
-
-
-      const fileInputRef = useRef(null);
-      const toggleCat = (cat) => setExpandedCats(prev => ({ ...prev, [cat]: !prev[cat] }));
-
-      useEffect(() => {
-        localStorage.setItem('af_v57_h', JSON.stringify(history));
-        localStorage.setItem('af_v57_r', JSON.stringify(routines));
-        localStorage.setItem('af_v57_c', JSON.stringify(customs));
-        localStorage.setItem('af_v57_aw', JSON.stringify(activeWorkout));
-      }, [history, routines, customs, activeWorkout]);
-
-      // lucide icons: avoid every render
-      useEffect(() => {
+  return () => {
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onEnd);
+    window.removeEventListener("touchmove", onMove);
+    window.removeEventListener("touchend", onEnd);
+  };
+}, [activeWorkout]);
+// ===== END DRAG & DROP =====
+useEffect(() => {
         if (window.lucide) window.lucide.createIcons();
       }, [activeTab, modal.type, activeWorkout, searchQuery]);
 
@@ -570,8 +516,8 @@ const finishWorkout = () => {
                     <div className="flex items-center gap-2">
 
                                                     <button
-                                                      onPointerDown={onDragStart(exI)}
-                                                      onTouchStart={onDragStart(exI)}
+                                                      onPointerDown={startDrag(exI)}
+                                                      onTouchStart={startDrag(exI)}
                                                       className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 active:bg-white/10"
                                                       aria-label="Trascina per riordinare"
                                                     >
@@ -638,7 +584,7 @@ const finishWorkout = () => {
                   {activeWorkout.exercises.map((ex, exI) => {
                     const exGhostNote = getGhostExerciseNotes(ex.name);
                     return (
-                      <div key={exI} ref={(el)=>{exCardRefs.current[exI]=el;}} className={`bg-white/[0.06] border border-white/15 p-5 rounded-[2rem] space-y-4 shadow-xl ${drag.active && drag.over===exI ? "ring-2 ring-indigo-500/60" : ""}`}>
+                      <div key={exI} ref={(el)=>{exCardRefs.current[exI]=el;}} className={`bg-white/[0.06] border border-white/15 p-5 rounded-[2rem] space-y-4 shadow-xl ${dragUI.active && dragUI.over===exI ? "ring-2 ring-indigo-500/60" : ""}`}>
                         <div className="flex justify-between items-start">
                           <div className="flex-1 min-w-0">
                             <h3 onClick={() => { const nn = prompt("Rinomina esercizio", ex.name); if(nn){ const n=[...activeWorkout.exercises]; n[exI].name = nn.trim(); setActiveWorkout({...activeWorkout, exercises:n}); } }} className="text-xl font-black uppercase text-white leading-tight truncate active:opacity-70">{ex.name}</h3>
