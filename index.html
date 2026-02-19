@@ -259,9 +259,9 @@ useEffect(() => {
 const [expandedCats, setExpandedCats] = useState({});
       const [sessionDuration, setSessionDuration] = useState("00:00:00");
 
-            // Drag & drop riordino esercizi (TOUCH-ONLY, stabile)
+            // Drag & drop riordino esercizi (POINTER-BASED: touch + mouse)
             const exCardRefs = useRef([]);
-            const dragRef = useRef({ active:false, from:-1, over:-1 });
+            const dragRef = useRef({ active:false, from:-1, over:-1, pointerId:null });
             const [dragUI, setDragUI] = useState({ active:false, from:-1, over:-1 });
 
             const computeOverIndex = (clientY) => {
@@ -288,38 +288,60 @@ const [expandedCats, setExpandedCats] = useState({});
                 setActiveWorkout({ ...activeWorkout, exercises: n });
             };
 
-            const onDragHandleStart = (fromIdx) => (ev) => {
-                try { ev.preventDefault(); } catch(e) {}
-                const t = ev.touches && ev.touches[0] ? ev.touches[0] : null;
-                const y = t ? t.clientY : 0;
-                dragRef.current = { active:true, from:fromIdx, over:fromIdx };
+            const dragStart = (fromIdx, pointerId, clientY) => {
+                dragRef.current = { active:true, from:fromIdx, over:fromIdx, pointerId };
                 setDragUI({ active:true, from:fromIdx, over:fromIdx });
                 if (navigator && navigator.vibrate) navigator.vibrate(10);
             };
 
-            const onDragHandleMove = (ev) => {
+            const dragMove = (clientY) => {
                 if (!dragRef.current.active) return;
-                try { ev.preventDefault(); } catch(e) {}
-                const t = ev.touches && ev.touches[0] ? ev.touches[0] : null;
-                if (!t) return;
-                const over = computeOverIndex(t.clientY);
+                const over = computeOverIndex(clientY);
                 if (over >= 0 && over !== dragRef.current.over) {
                     dragRef.current.over = over;
-                    setDragUI({ active:true, from:dragRef.current.from, over:over });
+                    setDragUI({ active:true, from:dragRef.current.from, over });
                 }
             };
 
-            const onDragHandleEnd = () => {
+            const dragEnd = () => {
                 if (!dragRef.current.active) return;
                 const from = dragRef.current.from;
                 const over = dragRef.current.over;
-                dragRef.current = { active:false, from:-1, over:-1 };
+                dragRef.current = { active:false, from:-1, over:-1, pointerId:null };
                 setDragUI({ active:false, from:-1, over:-1 });
                 reorderExercises(from, over);
             };
 
+            const onDragPointerDown = (fromIdx) => (e) => {
+                try { e.preventDefault(); } catch(err) {}
+                // Pointer capture = move events continue even if finger leaves the handle
+                try { e.currentTarget.setPointerCapture(e.pointerId); } catch(err) {}
+                document.body.classList.add('select-none');
+                dragStart(fromIdx, e.pointerId, e.clientY);
+            };
 
-            const [installState, setInstallState] = useState({ canInstall: false, shown: false, reason: "" });
+            const onDragPointerMove = (e) => {
+                if (!dragRef.current.active) return;
+                if (dragRef.current.pointerId !== null && e.pointerId !== dragRef.current.pointerId) return;
+                try { e.preventDefault(); } catch(err) {}
+                dragMove(e.clientY);
+            };
+
+            const onDragPointerUp = (e) => {
+                if (!dragRef.current.active) return;
+                if (dragRef.current.pointerId !== null && e.pointerId !== dragRef.current.pointerId) return;
+                try { e.preventDefault(); } catch(err) {}
+                document.body.classList.remove('select-none');
+                try { e.currentTarget.releasePointerCapture(e.pointerId); } catch(err) {}
+                dragEnd();
+            };
+
+            const onDragPointerCancel = () => {
+                document.body.classList.remove('select-none');
+                dragEnd();
+            };
+
+const [installState, setInstallState] = useState({ canInstall: false, shown: false, reason: "" });
             const deferredPromptRef = useRef(null);
 
             useEffect(() => {
@@ -551,6 +573,18 @@ const finishWorkout = () => {
         setActiveTab('home');
       };
 
+      const renameActiveWorkout = (newName) => {
+        const name = (newName || '').trim();
+        if (!name) return;
+        setActiveWorkout(prev => prev ? ({ ...prev, name }) : prev);
+      };
+
+      const renameHistoryWorkout = (workoutId, newName) => {
+        const name = (newName || '').trim();
+        if (!name) return;
+        setHistory(prev => (prev || []).map(h => (h.id === workoutId ? { ...h, name } : h)));
+      };
+
       return (
         <div className="max-w-md mx-auto min-h-screen px-4 pb-32">
           <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
@@ -620,7 +654,7 @@ const finishWorkout = () => {
                             e.stopPropagation();
                             setModal({type:'confirm', confirmAction: () => setHistory(prev => (prev || []).filter(x => (h.id && x.id !== h.id) || (!h.id && !((x.startTime && h.startTime && x.startTime===h.startTime) || (x.date && h.date && x.date===h.date))))), data: "Eliminare questo allenamento dalla cronologia?"});
                           }}
-                          className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center active:bg-red-600/40"
+                          className="w-9 h-9 rounded-xl bg-white/5 touch-none border border-white/10 flex items-center justify-center active:bg-red-600/40"
                           aria-label="Elimina"
                         >
                           <Icon name="trash-2" size={18} className="text-white/30" />
@@ -640,7 +674,7 @@ const finishWorkout = () => {
                     <button onClick={() => setModal({type:'confirm', confirmAction: () => {setActiveWorkout(null); setActiveTab('home');}, data: "Annullare sessione?"})} className="text-white/50 text-[10px] font-black uppercase bg-white/5 px-3 py-2 rounded-full border border-white/10 active:bg-white/15">Esci</button>
                   </div>
                   <div className="flex-1 text-center min-w-0">
-                    <p className="text-indigo-400 text-[10px] font-black mb-0.5 uppercase tracking-widest truncate">{activeWorkout.name}</p>
+                    <p className="text-indigo-400 text-[10px] font-black mb-0.5 uppercase tracking-widest flex items-center justify-center gap-2"><button onClick={() => setModal({type:'rename', mode:'active', data:{ current: activeWorkout?.name || '' }})} className="px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 active:bg-white/10" aria-label="Rinomina allenamento"><Icon name="pencil" size={14} /></button><span className="max-w-[220px] truncate">{activeWorkout.name}</span></p>
                     <p className="text-4xl font-black tabular-nums text-white leading-none">{sessionDuration}</p>
                   </div>
                   <div className="w-1/4 flex justify-end">
@@ -664,9 +698,10 @@ const finishWorkout = () => {
                           </div>
                           <div className="flex items-center gap-2">
                                                     <button
-                                                      onTouchStart={onDragHandleStart(exI)}
-                                                      onTouchMove={onDragHandleMove}
-                                                      onTouchEnd={onDragHandleEnd}
+                                                      onPointerDown={onDragPointerDown(exI)}
+                                                      onPointerMove={onDragPointerMove}
+                                                      onPointerUp={onDragPointerUp}
+                                                      onPointerCancel={onDragPointerCancel}
                                                       className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 active:bg-white/10"
                                                       aria-label="Trascina per riordinare"
                                                     ><Icon name="grip-vertical" size={18}/></button>
@@ -797,7 +832,7 @@ const finishWorkout = () => {
 
                               {customForm.open && (
                                 <div className="bg-white/[0.04] border border-white/12 rounded-[1.6rem] p-5 space-y-3 shadow-xl view-animate">
-                                  <div className="grid grid-cols-2 gap-3">
+                                  <div className="grid grid-cols-3 gap-3">
                                     <div className="space-y-2">
                                       <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Gruppo</p>
                                       <select
@@ -975,6 +1010,13 @@ const finishWorkout = () => {
                   </button>
 
                   <button
+                    onClick={() => setModal({type:'rename', mode:'history', data:{ id: modal.data?.id, current: modal.data?.name || '' }})}
+                    className="py-4 bg-white/5 border border-white/15 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95"
+                  >
+                    Rinomina
+                  </button>
+
+                  <button
                     onClick={() => setModal({type:'confirm', confirmAction: () => {
                       const ts = modal.data.startTime || null;
                       const iso = modal.data.date || null;
@@ -994,6 +1036,38 @@ const finishWorkout = () => {
             </div>
           )}
 
+
+
+          {/* MODAL RENAME */}
+          {modal.type === 'rename' && (
+            <div className="fixed inset-0 z-[4100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6 view-animate">
+              <div className="glass p-7 w-full max-w-sm space-y-5 text-center shadow-2xl border-white/10">
+                <p className="text-[11px] font-black uppercase tracking-widest text-white/60">Rinomina</p>
+                <input
+                  id="rename-in"
+                  defaultValue={modal.data?.current || ''}
+                  className="w-full text-base font-black bg-white/[0.04] border border-white/10 rounded-2xl p-5 text-center outline-none focus:border-indigo-500"
+                  placeholder="Nome allenamento"
+                  autoFocus
+                />
+                <div className="flex gap-3">
+                  <button onClick={() => setModal({type:null})} className="flex-1 py-3 bg-white/5 rounded-xl text-[10px] font-black uppercase">Annulla</button>
+                  <button
+                    onClick={() => {
+                      const val = (document.getElementById('rename-in')?.value || '').trim();
+                      if (!val) return;
+                      if (modal.mode === 'active') renameActiveWorkout(val);
+                      if (modal.mode === 'history') renameHistoryWorkout(modal.data?.id, val);
+                      setModal({type:null});
+                    }}
+                    className="flex-1 py-3 bg-indigo-600 rounded-xl text-[10px] font-black uppercase text-white shadow-xl shadow-indigo-600/30"
+                  >
+                    Salva
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
 {/* MODAL CONFIRM */}
           {modal.type === 'confirm' && (
