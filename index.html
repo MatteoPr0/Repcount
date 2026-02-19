@@ -59,16 +59,60 @@
     };
 
     const INITIAL_LIB = {
-      "Petto": ["Panca Piana Bilanciere", "Panca Inclinata Bilanciere", "Chest Press", "Dips", "Croci ai Cavi", "Pec Deck"],
-      "Dorso": ["Trazioni Wide", "Lat Machine Wide", "Rematore Bilanciere", "Pulley Basso", "Stacchi da Terra", "Rack Pull"],
-      "Gambe": ["Squat", "Leg Press 45°", "Leg Extension", "Leg Curl", "RDL", "Hip Thrust", "Affondi Bulgari"],
-      "Spalle": ["Military Press", "Overhead Press Manubri", "Lento Avanti Seduto", "Alzate Laterali", "Facepull", "Alzate a 90°"],
-      "Bicipiti": ["Curl Bilanciere", "Curl Alternato", "Curl Martello", "Curl alla Scott"],
-      "Tricipiti": ["Pushdown", "French Press", "Estensioni Dietro Nuca", "Panca Stretta"],
-      "Addominali": ["Crunch", "Leg Raise", "Plank", "Russian Twist"]
-    };
+            "Petto": [
+              "Panca Piana Bilanciere","Panca Inclinata Bilanciere","Panca Declinata Bilanciere",
+              "Panca Piana Manubri","Panca Inclinata Manubri","Panca Declinata Manubri",
+              "Chest Press","Chest Press Inclinata","Chest Press Convergente",
+              "Croci Manubri","Croci Panca Inclinata","Croci ai Cavi (Basso-Alto)","Croci ai Cavi (Alto-Basso)",
+              "Pec Deck","Dips (Focus Petto)","Push-up","Push-up piedi rialzati",
+              "Pullover Manubrio","Pullover Cavo Alto","Squeeze Press"
+            ],
+            "Dorso": [
+              "Trazioni Wide","Trazioni Presa Inversa","Trazioni Neutre",
+              "Lat Machine Wide","Lat Machine Inversa","Lat Machine Neutra",
+              "Lat Machine Braccia Tese","Pulley Basso","Pulley Largo","Row Convergente",
+              "Rematore Bilanciere","Rematore Manubrio","Rematore T-Bar","Seal Row",
+              "Chest Supported Row","Pulldown Unilaterale","Stacchi da Terra","Rack Pull",
+              "Pull-over Cavo Alto","Facepull (Schiena)"
+            ],
+            "Gambe": [
+              "Squat","Front Squat","Hack Squat",
+              "Leg Press 45°","Leg Press Orizzontale","Leg Press Singola",
+              "Affondi Bulgari","Affondi in Camminata","Step-up",
+              "Stacco Rumeno (RDL)","Stacco Gambe Tese","Stacco Sumò",
+              "Hip Thrust","Glute Bridge",
+              "Leg Extension","Leg Curl","Leg Curl Seduto","Leg Curl Sdraiato",
+              "Calf Raise In Piedi","Calf Raise Seduto","Abductor Machine","Adductor Machine"
+            ],
+            "Spalle": [
+              "Military Press","Overhead Press Manubri","Lento Avanti Seduto","Arnold Press","Shoulder Press Machine",
+              "Alzate Laterali","Alzate Laterali ai Cavi","Alzate Laterali Machine","Alzate Frontali","Alzate a 90°",
+              "Reverse Pec Deck","Facepull","Scrollate (Shrugs)","Upright Row (Leggero)",
+              "Y-Raise","Cuban Press (Leggero)","Landmine Press","Alzate Laterali Inclinato",
+              "Cable Lateral Lean","Seated DB Press"
+            ],
+            "Bicipiti": [
+              "Curl Bilanciere","Curl Bilanciere EZ","Curl Alternato","Curl Martello","Curl Inclinata",
+              "Curl alla Scott","Curl Concentrato","Curl ai Cavi","Curl ai Cavi Unilaterale","Spider Curl",
+              "Curl Presa Inversa","Zottman Curl","Curl 21","Curl su Panca 45°","Curl Machine",
+              "Hammer Rope Cavo","Curl TRX","Chin-up (Bicipiti)","Curl Manubri Seduto","Curl Static Hold"
+            ],
+            "Tricipiti": [
+              "Pushdown","Pushdown Corda","Pushdown Barra","French Press","French Press EZ",
+              "Estensioni Dietro Nuca","Estensioni Cavo Alto","Kickback Manubrio","Skull Crusher",
+              "Panca Stretta","Dips Panchetta","Dips Parallele (Tricipiti)","JM Press (Leggero)",
+              "Estensioni Manubrio Unilaterale","Overhead Rope Extension","Close Grip Push-up","Diamond Push-up",
+              "Cable Kickback","Triceps Machine","Tate Press"
+            ],
+            "Addominali": [
+              "Crunch","Crunch ai Cavi","Crunch su Fitball","Leg Raise","Leg Raise Sospesi",
+              "Reverse Crunch","Plank","Side Plank","Russian Twist","Bicycle Crunch",
+              "Dead Bug","Hollow Hold","Ab Wheel","Pallof Press","Woodchopper Cavo",
+              "Mountain Climber","Sit-up","V-up","Toe Touch","Cable Crunch Unilaterale"
+            ]
+        };
 
-    const MUSCLE_MAP = {};
+        const MUSCLE_MAP = {};
     Object.entries(INITIAL_LIB).forEach(([cat, list]) => list.forEach(ex => MUSCLE_MAP[ex] = cat));
 
     const toNum = (x) => {
@@ -155,8 +199,101 @@ useEffect(() => {
       const [modal, setModal] = useState({ type: null, mode: null, routineExs: [], confirmAction: null });
       const [searchQuery, setSearchQuery] = useState('');
             const [customForm, setCustomForm] = useState({ open:false, name:'', cat:'Petto' });
-      const [expandedCats, setExpandedCats] = useState({});
+      
+            const mergedLibrary = useMemo(() => {
+                const out = {};
+                Object.keys(INITIAL_LIB).forEach(cat => {
+                    out[cat] = [...(INITIAL_LIB[cat] || []), ...(customs?.[cat] || [])];
+                });
+                Object.keys(customs || {}).forEach(cat => {
+                    if (!out[cat]) out[cat] = [...(customs?.[cat] || [])];
+                });
+                Object.keys(out).forEach(cat => {
+                    const seen = new Set();
+                    out[cat] = out[cat].filter(x => {
+                        const k = (x || "").trim().toLowerCase();
+                        if (!k) return false;
+                        if (seen.has(k)) return false;
+                        seen.add(k);
+                        return true;
+                    }).sort((a,b)=>a.localeCompare(b,'it',{sensitivity:'base'}));
+                });
+                return out;
+            }, [customs]);
+const [expandedCats, setExpandedCats] = useState({});
       const [sessionDuration, setSessionDuration] = useState("00:00:00");
+            
+            // Drag & drop riordino esercizi (mobile-friendly via Pointer Events)
+            const exCardRefs = useRef([]);
+            const [drag, setDrag] = useState({ active:false, from:null, over:null, y:0 });
+            const dragFromRef = useRef(null);
+
+            const onDragStart = (fromIdx) => (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                dragFromRef.current = fromIdx;
+                const y = (ev.touches?.[0]?.clientY ?? ev.clientY);
+                setDrag({ active:true, from: fromIdx, over: fromIdx, y });
+                if (navigator.vibrate) navigator.vibrate(20);
+            };
+
+            const onDragMove = (clientY) => {
+                const fromIdx = dragFromRef.current;
+                if (fromIdx === null || fromIdx === undefined) return;
+                const refs = exCardRefs.current || [];
+                if (!refs.length) return;
+                let overIdx = fromIdx;
+                for (let i = 0; i < refs.length; i++) {
+                    const el = refs[i];
+                    if (!el) continue;
+                    const r = el.getBoundingClientRect();
+                    const mid = r.top + r.height / 2;
+                    if (clientY < mid) { overIdx = i; break; }
+                    overIdx = i;
+                }
+                setDrag(prev => ({ ...prev, over: overIdx, y: clientY }));
+            };
+
+            const commitDrag = () => {
+                const fromIdx = dragFromRef.current;
+                if (fromIdx === null || fromIdx === undefined) return;
+                const overIdx = drag.over ?? fromIdx;
+                setActiveWorkout(prev => {
+                    if (!prev?.exercises) return prev;
+                    const n = [...prev.exercises];
+                    if (overIdx === fromIdx) return prev;
+                    const [moved] = n.splice(fromIdx, 1);
+                    n.splice(overIdx, 0, moved);
+                    return { ...prev, exercises: n };
+                });
+                dragFromRef.current = null;
+                setDrag({ active:false, from:null, over:null, y:0 });
+            };
+
+            useEffect(() => {
+                const onMove = (e) => {
+                    const fromIdx = dragFromRef.current;
+                    if (fromIdx === null || fromIdx === undefined) return;
+                    const y = (e.touches?.[0]?.clientY ?? e.clientY);
+                    onDragMove(y);
+                };
+                const onUp = () => {
+                    const fromIdx = dragFromRef.current;
+                    if (fromIdx === null || fromIdx === undefined) return;
+                    commitDrag();
+                };
+                window.addEventListener('pointermove', onMove, { passive:false });
+                window.addEventListener('pointerup', onUp, { passive:true });
+                window.addEventListener('touchmove', onMove, { passive:false });
+                window.addEventListener('touchend', onUp, { passive:true });
+                return () => {
+                    window.removeEventListener('pointermove', onMove);
+                    window.removeEventListener('pointerup', onUp);
+                    window.removeEventListener('touchmove', onMove);
+                    window.removeEventListener('touchend', onUp);
+                };
+            }, [drag.over]);
+
 
             const [installState, setInstallState] = useState({ canInstall: false, shown: false, reason: "" });
             const deferredPromptRef = useRef(null);
@@ -402,7 +539,7 @@ const finishWorkout = () => {
               <div className="space-y-6 view-animate">
                 <header className="flex justify-between items-center px-1 text-left">
                   <div>
-                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">v13.0</p>
+                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">v15.0</p>
                     <h1 className="text-4xl font-black tracking-tighter">AuraFit</h1>
                   </div>
                   <div className="w-12 h-12 bg-white/[0.1] border border-white/20 flex items-center justify-center rounded-2xl shadow-xl shadow-indigo-500/10">
@@ -431,6 +568,16 @@ const finishWorkout = () => {
                   <div className="bg-white/[0.08] border border-white/10 p-5 rounded-[1.8rem] shadow-xl">
                     <p className="text-[9px] font-black text-white/40 mb-1 uppercase tracking-widest">ACWR (7/28)</p>
                     <div className="flex items-center gap-2">
+
+                                                    <button
+                                                      onPointerDown={onDragStart(exI)}
+                                                      onTouchStart={onDragStart(exI)}
+                                                      className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 active:bg-white/10"
+                                                      aria-label="Trascina per riordinare"
+                                                    >
+                                                      <Icon name="grip-vertical" size={18} />
+                                                    </button>
+
                       <span className="text-3xl font-black tabular-nums">{acwr}</span>
                       <div className={`w-2.5 h-2.5 rounded-full ${parseFloat(acwr) > 1.5 ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`} />
                     </div>
@@ -491,17 +638,27 @@ const finishWorkout = () => {
                   {activeWorkout.exercises.map((ex, exI) => {
                     const exGhostNote = getGhostExerciseNotes(ex.name);
                     return (
-                      <div key={exI} className="bg-white/[0.06] border border-white/15 p-5 rounded-[2rem] space-y-4 shadow-xl">
+                      <div key={exI} ref={(el)=>{exCardRefs.current[exI]=el;}} className={`bg-white/[0.06] border border-white/15 p-5 rounded-[2rem] space-y-4 shadow-xl ${drag.active && drag.over===exI ? "ring-2 ring-indigo-500/60" : ""}`}>
                         <div className="flex justify-between items-start">
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-xl font-black uppercase text-white leading-tight truncate">{ex.name}</h3>
+                            <h3 onClick={() => { const nn = prompt("Rinomina esercizio", ex.name); if(nn){ const n=[...activeWorkout.exercises]; n[exI].name = nn.trim(); setActiveWorkout({...activeWorkout, exercises:n}); } }} className="text-xl font-black uppercase text-white leading-tight truncate active:opacity-70">{ex.name}</h3>
                             <div className="flex items-center gap-2 mt-1 opacity-60">
                               <Icon name="clock" size={10} className="text-indigo-400" />
                               <input type="number" value={ex.rest} onChange={(e) => { const n = deepClone(activeWorkout.exercises); n[exI].rest = e.target.value; setActiveWorkout({...activeWorkout, exercises: n}); }} className="w-8 bg-transparent text-[10px] font-black text-indigo-300 outline-none" />
                               <span className="text-[9px] font-black uppercase">sec rest</span>
                             </div>
                           </div>
-                          <button onClick={() => { const n = activeWorkout.exercises.filter((_, i) => i !== exI); setActiveWorkout({...activeWorkout, exercises: n}); }} className="text-white/20 p-1 active:text-red-400"><Icon name="x" size={20}/></button>
+                          <div className="flex items-center gap-2">
+                                                    <button onClick={() => {
+                                                        const n = [...activeWorkout.exercises];
+                                                        if (exI > 0) { const t = n[exI-1]; n[exI-1] = n[exI]; n[exI] = t; setActiveWorkout({...activeWorkout, exercises:n}); }
+                                                    }} className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/30 active:bg-white/10" aria-label="Sposta su"><Icon name="chevron-up" size={18}/></button>
+                                                    <button onClick={() => {
+                                                        const n = [...activeWorkout.exercises];
+                                                        if (exI < n.length-1) { const t = n[exI+1]; n[exI+1] = n[exI]; n[exI] = t; setActiveWorkout({...activeWorkout, exercises:n}); }
+                                                    }} className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/30 active:bg-white/10" aria-label="Sposta giù"><Icon name="chevron-down" size={18}/></button>
+                                                    <button onClick={() => { const n = activeWorkout.exercises.filter((_, i) => i !== exI); setActiveWorkout({...activeWorkout, exercises: n}); }} className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/30 active:bg-red-600/30" aria-label="Elimina esercizio"><Icon name="x" size={20}/></button>
+                                                  </div>
                         </div>
 
                         <NoteArea initialValue={ex.notes} onCommit={(v) => updateExNote(exI, v)} ghost={exGhostNote || "Note tecniche..."} className="bg-white/[0.04] border-white/10" />
@@ -665,7 +822,7 @@ const finishWorkout = () => {
                             <div className="relative mb-8 group">
 <Icon name="search" size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-400" /><input type="text" placeholder="Cerca..." className="w-full pl-14 pr-8 py-5 bg-white/[0.08] border border-white/20 rounded-[1.8rem] text-left text-lg font-bold text-white outline-none focus:border-indigo-400 shadow-2xl" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
               <div className="space-y-3 pb-40">
-                {Object.entries({...INITIAL_LIB, ...customs}).map(([cat, exs]) => {
+                {Object.entries(mergedLibrary).map(([cat, exs]) => {
                   const filtered = exs.filter(e => e.toLowerCase().includes(searchQuery.toLowerCase()));
                   if (filtered.length === 0) return null;
                   const isOpen = searchQuery.length > 0 || expandedCats[cat];
@@ -773,7 +930,7 @@ const finishWorkout = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => {
-                      // Duplicate this workout into a new active session
+                      // Repeat this workout (same exercises/sets count, empty values so ghosts show last time)
                       const src = modal.data;
                       const ws = {
                         id: genId(),
@@ -783,8 +940,8 @@ const finishWorkout = () => {
                         exercises: (src.exercises || []).map(e => ({
                           name: e.name,
                           rest: e.rest || 90,
-                          notes: e.notes || "",
-                          sets: (e.sets || []).map(s => ({ kg: s.kg || '', reps: s.reps || '', note: s.note || '', w: !!s.w, d: false }))
+                          notes: "",
+                          sets: Array.from({ length: Math.max(1, (e.sets || []).length) }, () => ({ kg: '', reps: '', note: '', w: false, d: false }))
                         }))
                       };
                       setActiveWorkout(ws);
@@ -793,7 +950,7 @@ const finishWorkout = () => {
                     }}
                     className="py-4 bg-white text-black rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 shadow-lg"
                   >
-                    Duplica
+                    Ripeti
                   </button>
 
                   <button
