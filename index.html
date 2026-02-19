@@ -49,9 +49,39 @@
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root"><div style="padding:24px;color:rgba(255,255,255,0.6);font:14px system-ui">Loading AuraFit… (se rimane fermo: errore JS)</div></div>
 
-  <script type="text/babel">
+  <script>
+(function(){
+  function box(msg){
+    try{
+      var el=document.getElementById('__af_err__');
+      if(!el){
+        el=document.createElement('div');
+        el.id='__af_err__';
+        el.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;background:rgba(0,0,0,0.92);border:1px solid rgba(255,255,255,0.22);color:#fff;padding:12px;border-radius:16px;font:12px/1.4 system-ui;white-space:pre-wrap;max-height:45vh;overflow:auto;';
+        document.body.appendChild(el);
+      }
+      el.textContent=msg;
+    }catch(e){}
+  }
+  window.addEventListener('error', function(e){
+    box('JS ERROR:\n' + (e && e.message ? e.message : String(e)) + '\n' + (e && e.filename ? (e.filename+':'+e.lineno) : ''));
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    var r = e && e.reason ? e.reason : e;
+    box('PROMISE REJECTION:\n' + (r && (r.stack || r.message) ? (r.stack || r.message) : String(r)));
+  });
+  // if React never mounts, show hint after 3s
+  setTimeout(function(){
+    var root=document.getElementById('root');
+    if(root && root.children && root.children.length===1){
+      box('App non montata (forse errore Babel/JS).\nProva refresh + svuota cache.');
+    }
+  }, 3000);
+})();
+</script>
+<script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
 
     const Icon = ({ name, size = 24, className = "" }) => {
@@ -222,78 +252,120 @@ useEffect(() => {
             }, [customs]);
 const [expandedCats, setExpandedCats] = useState({});
       const [sessionDuration, setSessionDuration] = useState("00:00:00");
-            
-            // Drag & drop riordino esercizi (mobile-friendly via Pointer Events)
-// NOTE: implementazione "safe": listeners globali registrati UNA volta, stato in ref per evitare loop/black screen.
-const exCardRefs = useRef([]);
-const dragRef = useRef({ active:false, from:null, over:null, startY:0, currentY:0 });
-const [dragUI, setDragUI] = useState({ active:false, from:null, over:null });
 
-const reorderExercises = (fromIdx, toIdx) => {
-  if (!activeWorkout) return;
-  const exs = [...activeWorkout.exercises];
-  const [moved] = exs.splice(fromIdx, 1);
-  exs.splice(toIdx, 0, moved);
-  setActiveWorkout({ ...activeWorkout, exercises: exs });
-};
+            // Drag & drop riordino esercizi (TOUCH-ONLY, stabile)
+            const exCardRefs = useRef([]);
+            const dragRef = useRef({ active:false, from:-1, over:-1 });
+            const [dragUI, setDragUI] = useState({ active:false, from:-1, over:-1 });
 
-const computeOverIndex = (clientY) => {
-  const els = exCardRefs.current.filter(Boolean);
-  if (els.length === 0) return null;
-  let bestIdx = null;
-  let bestDist = Infinity;
-  for (let i = 0; i < els.length; i++) {
-    const r = els[i].getBoundingClientRect();
-    const mid = r.top + r.height / 2;
-    const dist = Math.abs(clientY - mid);
-    if (dist < bestDist) { bestDist = dist; bestIdx = i; }
-  }
-  return bestIdx;
-};
+            const computeOverIndex = (clientY) => {
+                const refs = exCardRefs.current || [];
+                let over = -1;
+                for (let i = 0; i < refs.length; i++) {
+                    const el = refs[i];
+                    if (!el) continue;
+                    const r = el.getBoundingClientRect();
+                    const mid = r.top + (r.height / 2);
+                    if (clientY < mid) { over = i; break; }
+                    over = i;
+                }
+                return over;
+            };
 
-const startDrag = (fromIdx) => (ev) => {
-  ev.preventDefault();
-  ev.stopPropagation();
-  const y = (ev.touches?.[0]?.clientY ?? ev.clientY);
-  dragRef.current = { active:true, from:fromIdx, over:fromIdx, startY:y, currentY:y };
-  setDragUI({ active:true, from:fromIdx, over:fromIdx });
-};
+            const reorderExercises = (fromIdx, toIdx) => {
+                if (!activeWorkout || !activeWorkout.exercises) return;
+                const n = activeWorkout.exercises.slice();
+                if (fromIdx < 0 || toIdx < 0 || fromIdx >= n.length || toIdx >= n.length) return;
+                if (fromIdx === toIdx) return;
+                const moved = n.splice(fromIdx, 1)[0];
+                n.splice(toIdx, 0, moved);
+                setActiveWorkout({ ...activeWorkout, exercises: n });
+            };
 
-useEffect(() => {
-  const onMove = (ev) => {
-    if (!dragRef.current.active) return;
-    const y = (ev.touches?.[0]?.clientY ?? ev.clientY);
-    dragRef.current.currentY = y;
-    const over = computeOverIndex(y);
-    if (over !== null && over !== dragRef.current.over) {
-      dragRef.current.over = over;
-      // aggiornamento UI leggero
-      setDragUI(prev => (prev.over === over ? prev : { ...prev, over }));
-    }
-  };
+            const onDragHandleStart = (fromIdx) => (ev) => {
+                try { ev.preventDefault(); } catch(e) {}
+                const t = ev.touches && ev.touches[0] ? ev.touches[0] : null;
+                const y = t ? t.clientY : 0;
+                dragRef.current = { active:true, from:fromIdx, over:fromIdx };
+                setDragUI({ active:true, from:fromIdx, over:fromIdx });
+                if (navigator && navigator.vibrate) navigator.vibrate(10);
+            };
 
-  const onEnd = () => {
-    if (!dragRef.current.active) return;
-    const { from, over } = dragRef.current;
-    dragRef.current.active = false;
-    setDragUI({ active:false, from:null, over:null });
-    if (from !== null && over !== null && from !== over) reorderExercises(from, over);
-  };
+            const onDragHandleMove = (ev) => {
+                if (!dragRef.current.active) return;
+                try { ev.preventDefault(); } catch(e) {}
+                const t = ev.touches && ev.touches[0] ? ev.touches[0] : null;
+                if (!t) return;
+                const over = computeOverIndex(t.clientY);
+                if (over >= 0 && over !== dragRef.current.over) {
+                    dragRef.current.over = over;
+                    setDragUI({ active:true, from:dragRef.current.from, over:over });
+                }
+            };
 
-  window.addEventListener("pointermove", onMove, { passive: true });
-  window.addEventListener("pointerup", onEnd, { passive: true });
-  window.addEventListener("touchmove", onMove, { passive: true });
-  window.addEventListener("touchend", onEnd, { passive: true });
+            const onDragHandleEnd = () => {
+                if (!dragRef.current.active) return;
+                const from = dragRef.current.from;
+                const over = dragRef.current.over;
+                dragRef.current = { active:false, from:-1, over:-1 };
+                setDragUI({ active:false, from:-1, over:-1 });
+                reorderExercises(from, over);
+            };
 
-  return () => {
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onEnd);
-    window.removeEventListener("touchmove", onMove);
-    window.removeEventListener("touchend", onEnd);
-  };
-}, [activeWorkout]);
-// ===== END DRAG & DROP =====
-useEffect(() => {
+
+            const [installState, setInstallState] = useState({ canInstall: false, shown: false, reason: "" });
+            const deferredPromptRef = useRef(null);
+
+            useEffect(() => {
+                // Installability hook (Chrome/Android)
+                const onBip = (e) => {
+                    e.preventDefault();
+                    deferredPromptRef.current = e;
+                    setInstallState({ canInstall: true, shown: true, reason: "" });
+                };
+                window.addEventListener('beforeinstallprompt', onBip);
+
+                // Basic diagnostics after load
+                setTimeout(() => {
+                    const hasSW = 'serviceWorker' in navigator;
+                    const controlled = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
+                    const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+                    // If canInstall is false and we're not standalone, give a hint
+                    setInstallState(prev => {
+                        if (prev.canInstall || isStandalone) return prev;
+                        let reason = "";
+                        if (!hasSW) reason = "Service worker non supportato (browser).";
+                        else if (!controlled) reason = "Service worker non controlla la pagina (cache/registrazione/scope).";
+                        else reason = "Chrome non ha ancora emesso il prompt (serve 2 visite o criteri di engagement).";
+                        return { ...prev, shown: true, reason };
+                    });
+                }, 1200);
+
+                return () => window.removeEventListener('beforeinstallprompt', onBip);
+            }, []);
+
+            const triggerInstall = async () => {
+                const dp = deferredPromptRef.current;
+                if (!dp) return;
+                dp.prompt();
+                try { await dp.userChoice; } catch (e) {}
+                deferredPromptRef.current = null;
+                setInstallState({ canInstall: false, shown: true, reason: "Se hai scelto 'Annulla', riprova dal menu Chrome tra poco." });
+            };
+
+
+      const fileInputRef = useRef(null);
+      const toggleCat = (cat) => setExpandedCats(prev => ({ ...prev, [cat]: !prev[cat] }));
+
+      useEffect(() => {
+        localStorage.setItem('af_v57_h', JSON.stringify(history));
+        localStorage.setItem('af_v57_r', JSON.stringify(routines));
+        localStorage.setItem('af_v57_c', JSON.stringify(customs));
+        localStorage.setItem('af_v57_aw', JSON.stringify(activeWorkout));
+      }, [history, routines, customs, activeWorkout]);
+
+      // lucide icons: avoid every render
+      useEffect(() => {
         if (window.lucide) window.lucide.createIcons();
       }, [activeTab, modal.type, activeWorkout, searchQuery]);
 
@@ -485,7 +557,7 @@ const finishWorkout = () => {
               <div className="space-y-6 view-animate">
                 <header className="flex justify-between items-center px-1 text-left">
                   <div>
-                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">v15.0</p>
+                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">v15.0-drag</p>
                     <h1 className="text-4xl font-black tracking-tighter">AuraFit</h1>
                   </div>
                   <div className="w-12 h-12 bg-white/[0.1] border border-white/20 flex items-center justify-center rounded-2xl shadow-xl shadow-indigo-500/10">
@@ -514,16 +586,6 @@ const finishWorkout = () => {
                   <div className="bg-white/[0.08] border border-white/10 p-5 rounded-[1.8rem] shadow-xl">
                     <p className="text-[9px] font-black text-white/40 mb-1 uppercase tracking-widest">ACWR (7/28)</p>
                     <div className="flex items-center gap-2">
-
-                                                    <button
-                                                      onPointerDown={startDrag(exI)}
-                                                      onTouchStart={startDrag(exI)}
-                                                      className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 active:bg-white/10"
-                                                      aria-label="Trascina per riordinare"
-                                                    >
-                                                      <Icon name="grip-vertical" size={18} />
-                                                    </button>
-
                       <span className="text-3xl font-black tabular-nums">{acwr}</span>
                       <div className={`w-2.5 h-2.5 rounded-full ${parseFloat(acwr) > 1.5 ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`} />
                     </div>
@@ -595,6 +657,13 @@ const finishWorkout = () => {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                                                    <button
+                                                      onTouchStart={onDragHandleStart(exI)}
+                                                      onTouchMove={onDragHandleMove}
+                                                      onTouchEnd={onDragHandleEnd}
+                                                      className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 active:bg-white/10"
+                                                      aria-label="Trascina per riordinare"
+                                                    ><Icon name="grip-vertical" size={18}/></button>
                                                     <button onClick={() => {
                                                         const n = [...activeWorkout.exercises];
                                                         if (exI > 0) { const t = n[exI-1]; n[exI-1] = n[exI]; n[exI] = t; setActiveWorkout({...activeWorkout, exercises:n}); }
