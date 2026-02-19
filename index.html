@@ -154,6 +154,7 @@ useEffect(() => {
 
       const [modal, setModal] = useState({ type: null, mode: null, routineExs: [], confirmAction: null });
       const [searchQuery, setSearchQuery] = useState('');
+            const [customForm, setCustomForm] = useState({ open:false, name:'', cat:'Petto' });
       const [expandedCats, setExpandedCats] = useState({});
       const [sessionDuration, setSessionDuration] = useState("00:00:00");
 
@@ -356,7 +357,27 @@ useEffect(() => {
         setActiveWorkout({ ...activeWorkout, exercises: n });
       };
 
-      const finishWorkout = () => {
+      
+            const addCustomExercise = (cat, name) => {
+                const clean = (name || '').trim();
+                if (!clean) return false;
+                const group = (cat || 'Altro').trim();
+                // prevent duplicates across both libs in that group
+                const base = (INITIAL_LIB[group] || []);
+                const existing = new Set([...(customs[group] || []), ...base].map(s => s.toLowerCase()));
+                if (existing.has(clean.toLowerCase())) return false;
+                setCustoms(prev => {
+                    const next = { ...(prev || {}) };
+                    const arr = Array.isArray(next[group]) ? [...next[group]] : [];
+                    arr.push(clean);
+                    arr.sort((a,b)=>a.localeCompare(b,'it',{sensitivity:'base'}));
+                    next[group] = arr;
+                    return next;
+                });
+                return true;
+            };
+
+const finishWorkout = () => {
         if (!activeWorkout) return;
         let vol = 0;
         (activeWorkout.exercises || []).forEach(ex => (ex.sets || []).forEach(s => {
@@ -381,7 +402,7 @@ useEffect(() => {
               <div className="space-y-6 view-animate">
                 <header className="flex justify-between items-center px-1 text-left">
                   <div>
-                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">v11.0</p>
+                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">v13.0</p>
                     <h1 className="text-4xl font-black tracking-tighter">AuraFit</h1>
                   </div>
                   <div className="w-12 h-12 bg-white/[0.1] border border-white/20 flex items-center justify-center rounded-2xl shadow-xl shadow-indigo-500/10">
@@ -580,8 +601,69 @@ useEffect(() => {
           {/* MODAL LIBRERIA */}
           {modal.type === 'exercise-select' && (
             <div className="fixed inset-0 z-[1000] bg-[#020202]/98 backdrop-blur-[60px] p-6 flex flex-col overflow-y-auto animate-in fade-in">
-              <div className="flex justify-between items-center mb-8 px-1 text-left"><h2 className="text-3xl font-black uppercase text-white tracking-tighter">Libreria</h2><button onClick={() => setModal({type:null})} className="w-12 h-12 bg-white/10 border border-white/20 rounded-full flex items-center justify-center active:scale-90 shadow-xl"><Icon name="x" size={24}/></button></div>
-              <div className="relative mb-8 group"><Icon name="search" size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-400" /><input type="text" placeholder="Cerca..." className="w-full pl-14 pr-8 py-5 bg-white/[0.08] border border-white/20 rounded-[1.8rem] text-left text-lg font-bold text-white outline-none focus:border-indigo-400 shadow-2xl" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
+              <div className="flex justify-between items-center mb-8 px-1 text-left"><h2 className="text-3xl font-black uppercase text-white tracking-tighter">Libreria</h2><button onClick={() => setModal({type:null})} className="w-12 h-12 bg-white/10 border border-white/20 rounded-full flex items-center justify-center active:scale-90 shadow-xl"><Icon name="x" size={24}/></button>
+                            </div>
+
+                            {/* ADD CUSTOM EXERCISE */}
+                            <div className="mb-6 space-y-3">
+                              <button
+                                onClick={() => setCustomForm(f => ({...f, open: !f.open}))}
+                                className="w-full bg-white/[0.06] border border-white/15 rounded-[1.4rem] px-5 py-4 flex items-center justify-between active:bg-white/10 transition-all shadow-lg"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Icon name="plus-circle" size={20} className="text-indigo-400" />
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-white/60">Aggiungi esercizio personalizzato</span>
+                                </div>
+                                <Icon name="chevron-down" size={20} className={`text-indigo-400 transition-transform ${customForm.open ? 'rotate-180' : ''}`} />
+                              </button>
+
+                              {customForm.open && (
+                                <div className="bg-white/[0.04] border border-white/12 rounded-[1.6rem] p-5 space-y-3 shadow-xl view-animate">
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-2">
+                                      <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Gruppo</p>
+                                      <select
+                                        value={customForm.cat}
+                                        onChange={(e) => setCustomForm(f => ({...f, cat: e.target.value}))}
+                                        className="w-full bg-white/[0.06] border border-white/15 rounded-xl px-4 py-3 text-sm font-black text-white outline-none focus:border-indigo-400"
+                                      >
+                                        {Object.keys(INITIAL_LIB).map(c => (
+                                          <option key={c} value={c}>{c}</option>
+                                        ))}
+                                        <option value="Altro">Altro</option>
+                                      </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Nome</p>
+                                      <input
+                                        value={customForm.name}
+                                        onChange={(e) => setCustomForm(f => ({...f, name: e.target.value}))}
+                                        placeholder="Es. Curl cavi singolo"
+                                        className="w-full bg-white/[0.06] border border-white/15 rounded-xl px-4 py-3 text-sm font-black text-white outline-none focus:border-indigo-400 placeholder:text-white/20"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    onClick={() => {
+                                      const ok = addCustomExercise(customForm.cat, customForm.name);
+                                      if (ok) setCustomForm(f => ({...f, name:''}));
+                                      else alert('Nome vuoto o già presente in questo gruppo.');
+                                    }}
+                                    className="w-full bg-indigo-600 text-white py-4 rounded-[1.3rem] font-black uppercase text-[10px] tracking-widest shadow-xl shadow-indigo-600/30 active:scale-95 transition-all"
+                                  >
+                                    Salva nell'elenco
+                                  </button>
+
+                                  <p className="text-[9px] font-black uppercase tracking-widest text-white/20">
+                                    Suggerimento: usa nomi brevi e coerenti (es. "Panca inclinata Smith").
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="relative mb-8 group">
+<Icon name="search" size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-400" /><input type="text" placeholder="Cerca..." className="w-full pl-14 pr-8 py-5 bg-white/[0.08] border border-white/20 rounded-[1.8rem] text-left text-lg font-bold text-white outline-none focus:border-indigo-400 shadow-2xl" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
               <div className="space-y-3 pb-40">
                 {Object.entries({...INITIAL_LIB, ...customs}).map(([cat, exs]) => {
                   const filtered = exs.filter(e => e.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -592,6 +674,27 @@ useEffect(() => {
                       <div onClick={() => toggleCat(cat)} className="p-6 flex justify-between items-center cursor-pointer border-b border-white/10 active:bg-white/[0.08] transition-colors"><span className="font-black text-[11px] uppercase text-white/60 tracking-widest">{cat}</span><Icon name="chevron-down" className={`text-indigo-400 transition-all duration-300 ${isOpen ? 'rotate-180' : ''}`} /></div>
                       {isOpen && (
                         <div className="p-3 space-y-2 bg-black/50 animate-in slide-in-from-top-4">
+                                                    {/* Quick add in this group */}
+                                                    <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-3 flex items-center gap-2 shadow-lg">
+                                                      <Icon name="plus-circle" size={18} className="text-indigo-400" />
+                                                      <input
+                                                        value={customForm.open && customForm.cat === cat ? customForm.name : ""}
+                                                        onChange={(e) => setCustomForm({ open:true, cat, name: e.target.value })}
+                                                        placeholder={`Aggiungi in ${cat}...`}
+                                                        className="flex-1 bg-transparent border border-white/10 rounded-xl px-3 py-2 text-sm font-black text-white outline-none focus:border-indigo-400 placeholder:text-white/20"
+                                                      />
+                                                      <button
+                                                        onClick={() => {
+                                                          const ok = addCustomExercise(cat, (customForm.cat===cat ? customForm.name : ""));
+                                                          if (ok) setCustomForm({ open:true, cat, name:"" });
+                                                          else alert('Nome vuoto o già presente in questo gruppo.');
+                                                        }}
+                                                        className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/30 active:scale-95"
+                                                      >
+                                                        Aggiungi
+                                                      </button>
+                                                    </div>
+
                           {filtered.map(ex => (
                             <button key={ex} onClick={() => { safeAddExerciseToActive(ex); setModal({type:null}); }} className="w-full p-4 text-left font-extrabold bg-white/[0.05] border border-white/10 rounded-2xl flex justify-between items-center uppercase active:bg-indigo-600 active:text-white transition-all group text-white">
                               <span className="text-xs tracking-tight">{ex}</span>
