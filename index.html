@@ -196,24 +196,40 @@ const deepClone = (obj) => {
       );
     };
 
-const MiniBarChart = ({ data }) => {
-    const max = Math.max(1, ...data.map(d => d.value || 0));
-    return (
-        <svg viewBox={`0 0 ${data.length * 10} 60`} className="w-full h-20">
-            <line x1="0" y1="56" x2={data.length * 10} y2="56" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-            {data.map((d, i) => {
-                const h = Math.max(0, Math.round((d.value / max) * 44));
-                const y = 56 - h;
-                const has = (d.count || 0) > 0;
-                return (
-                    <g key={i} transform={`translate(${i * 10},0)`}>
-                        <rect x="2" y={y} width="6" height={h} rx="3" fill={has ? "rgba(99,102,241,0.85)" : "rgba(255,255,255,0.08)"} />
-                        {has && <circle cx="5" cy={Math.max(8, y - 4)} r="1.6" fill="rgba(255,255,255,0.75)" />}
-                    </g>
-                );
-            })}
-        </svg>
-    );
+const MiniBarChart = ({ data, height = 64 }) => {
+  const values = (data || []).map(d => Number(d.value || 0));
+  const max = Math.max(0, ...values);
+  const hasData = max > 0;
+
+  const w = 280; // virtual width for viewBox
+  const h = 52;  // virtual height for viewBox
+  const padX = 8;
+  const padY = 6;
+  const baselineY = h - padY;
+
+  const n = Math.max(1, values.length);
+  const barW = (w - padX * 2) / n;
+
+  return (
+    <svg className="w-full" style={{ height }} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-label="Attività ultimi 14 giorni">
+      {/* baseline */}
+      <line x1={padX} y1={baselineY} x2={w - padX} y2={baselineY} stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
+      {!hasData ? (
+        <text x={w/2} y={baselineY-10} textAnchor="middle" fill="rgba(255,255,255,0.35)" fontSize="10">Nessun dato</text>
+      ) : (
+        values.map((v, i) => {
+          const barH = Math.max(3, (v / max) * (baselineY - padY));
+          const x = padX + i * barW + barW * 0.18;
+          const y = baselineY - barH;
+          const bw = barW * 0.64;
+          const r = Math.min(8, bw / 2);
+          return (
+            <rect key={i} x={x} y={y} width={bw} height={barH} rx={r} ry={r} fill="rgba(139,92,246,0.9)" />
+          );
+        })
+      )}
+    </svg>
+  );
 };
 
 const fmtWeekday = (d) => {
@@ -589,7 +605,7 @@ const trend = useMemo(() => {
 
             // Derived helpers for the Home mini-chart (avoid undefined vars in JSX)
             const bars14 = useMemo(() => (
-                (trend.last14 || []).map(d => ({ value: d.vol || 0, count: d.count || 0, label: fmtWeekday(d.date) }))
+                (trend.last14 || []).map(d => ({ value: d.value || 0, count: d.count || 0, label: fmtWeekday(d.date) }))
             ), [trend]);
 
             const count7 = trend.totalSessions7 || 0;
@@ -732,7 +748,7 @@ const finishWorkout = () => {
                     <span className="text-3xl font-black tabular-nums truncate block">{history[history.length-1]?.vol || 0}</span>
                   </div>
                 
-                                    <div className="col-span-2 bg-white/[0.08] border border-white/15 p-6 rounded-[2.2rem] shadow-xl">
+                                    <div className="col-span-2 bg-white/[0.08] border border-white/15 p-5 rounded-[2.2rem] shadow-xl">
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="min-w-0">
                                                 <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.35em]">Attività</p>
@@ -751,13 +767,19 @@ const finishWorkout = () => {
                                             </div>
                                         </div>
 
-                                        <div className="mt-5">
-                                            <MiniBarChart data={bars14} height={86} />
+                                        <div className="mt-4">
+                                          <MiniBarChart data={bars14} height={72} />
+                                          <div className="mt-2 flex justify-between text-[10px] text-white/35 tracking-widest uppercase">
+                                            {bars14.map((b, i) => (
+                                              <span key={i} className="flex-1 text-center">{b.label}</span>
+                                            ))}
+                                          </div>
                                         </div>
 
-                                        <p className="mt-3 text-[9px] font-black uppercase tracking-[0.25em] text-white/25">
-                                            Intensità = volume totale / giorno
-                                        </p>
+                                        <div className="mt-3 flex items-center justify-between text-[10px] text-white/35 tracking-widest uppercase">
+                                          <span>Intensità</span>
+                                          <span className="text-white/25">volume/giorno</span>
+                                        </div>
                                     </div>
 
                                 </div>
