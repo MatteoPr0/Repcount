@@ -77,7 +77,14 @@
       return Number.isFinite(n) ? n : NaN;
     };
 
-    const deepClone = (obj) => {
+    const genId = () => {
+  try {
+    if (crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  } catch (e) {}
+  return 'w_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+};
+
+const deepClone = (obj) => {
       if (typeof structuredClone === 'function') return structuredClone(obj);
       return JSON.parse(JSON.stringify(obj));
     };
@@ -120,6 +127,23 @@
     function App() {
       const [activeTab, setActiveTab] = useState('home');
       const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('af_v57_h') || '[]'));
+
+// one-time migration: assign stable ids to old workouts
+const ensureWorkoutIds = (arr) => {
+  let changed = false;
+  const out = (arr || []).map(w => {
+    if (w && w.id) return w;
+    changed = true;
+    return { ...w, id: genId() };
+  });
+  return { out, changed };
+};
+
+useEffect(() => {
+  const { out, changed } = ensureWorkoutIds(history);
+  if (changed) setHistory(out);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
       const [routines, setRoutines] = useState(() => JSON.parse(localStorage.getItem('af_v57_r') || '[]'));
       const [customs, setCustoms] = useState(() => JSON.parse(localStorage.getItem('af_v57_c') || '{}'));
       const [activeWorkout, setActiveWorkout] = useState(() => JSON.parse(localStorage.getItem('af_v57_aw') || 'null'));
@@ -235,6 +259,7 @@
 
       const startWorkout = (r = null) => {
         const ws = {
+          id: genId(),
           name: r ? r.name : "Sessione Libera",
           date: new Date().toISOString(),
           startTime: Date.now(),
@@ -251,6 +276,7 @@
       const safeAddExerciseToActive = (exerciseName) => {
         setActiveWorkout(prev => {
           const base = prev || {
+            id: genId(),
             name: "Sessione Libera",
             date: new Date().toISOString(),
             startTime: Date.now(),
@@ -297,7 +323,7 @@
           const kg = toNum(s.kg), reps = toNum(s.reps);
           if (Number.isFinite(kg) && Number.isFinite(reps) && reps > 0) vol += (kg * reps);
         }));
-        setHistory([...history, { ...activeWorkout, vol, duration: sessionDuration, date: new Date().toISOString() }]);
+        setHistory([...history, { ...activeWorkout, id: activeWorkout.id || genId(), vol, duration: sessionDuration, date: new Date().toISOString() }]);
         setActiveWorkout(null);
         setActiveTab('home');
       };
@@ -525,7 +551,100 @@
             </div>
           )}
 
-          {/* MODAL CONFIRM */}
+          
+          {/* MODAL HISTORY */}
+          {modal.type === 'history' && modal.data && (
+            <div className="fixed inset-0 z-[3500] bg-black/92 backdrop-blur-xl p-6 overflow-y-auto view-animate">
+              <div className="max-w-md mx-auto space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="min-w-0">
+                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em]">Sessione</p>
+                    <h2 className="text-2xl font-black uppercase tracking-tight truncate">{modal.data.name}</h2>
+                    <p className="text-[10px] font-black uppercase text-white/30 mt-1">
+                      {new Date(modal.data.date).toLocaleString()} • Vol {modal.data.vol || 0} • Durata {modal.data.duration || '--'}
+                    </p>
+                  </div>
+                  <button onClick={() => setModal({type:null})} className="w-12 h-12 bg-white/10 border border-white/20 rounded-full flex items-center justify-center active:scale-90 shadow-xl">
+                    <Icon name="x" size={24}/>
+                  </button>
+                </div>
+
+                <div className="bg-white/[0.06] border border-white/15 p-5 rounded-[2rem] space-y-4 shadow-xl">
+                  {(modal.data.exercises || []).map((ex, exI) => (
+                    <div key={exI} className="space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-black uppercase tracking-tight truncate">{ex.name}</h3>
+                          {ex.notes ? <p className="text-xs text-white/40 whitespace-pre-wrap mt-1">{ex.notes}</p> : null}
+                        </div>
+                        <div className="text-[9px] font-black uppercase text-white/25 whitespace-nowrap pt-1">
+                          Rest {ex.rest || 90}s
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        {(ex.sets || []).map((s, sI) => (
+                          <div key={sI} className="grid grid-cols-12 gap-2 items-center bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2">
+                            <div className="col-span-1 text-indigo-400 font-black text-center">{sI+1}</div>
+                            <div className="col-span-3 text-center font-black tabular-nums">{s.kg || '--'} kg</div>
+                            <div className="col-span-3 text-center font-black tabular-nums">{s.reps || '--'} reps</div>
+                            <div className="col-span-2 text-center text-[10px] font-black uppercase">{s.w ? 'W' : 'A'}</div>
+                            <div className="col-span-3 text-left text-xs text-white/40 truncate">{s.note || ''}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => {
+                      // Duplicate this workout into a new active session
+                      const src = modal.data;
+                      const ws = {
+                        id: genId(),
+                        name: src.name || "Sessione Libera",
+                        date: new Date().toISOString(),
+                        startTime: Date.now(),
+                        exercises: (src.exercises || []).map(e => ({
+                          name: e.name,
+                          rest: e.rest || 90,
+                          notes: e.notes || "",
+                          sets: (e.sets || []).map(s => ({ kg: s.kg || '', reps: s.reps || '', note: s.note || '', w: !!s.w, d: false }))
+                        }))
+                      };
+                      setActiveWorkout(ws);
+                      setActiveTab('workout');
+                      setModal({type:null});
+                    }}
+                    className="py-4 bg-white text-black rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 shadow-lg"
+                  >
+                    Duplica
+                  </button>
+
+                  <button
+                    onClick={() => setModal({type:'confirm', confirmAction: () => {
+                      const ts = modal.data.startTime || null;
+                      const iso = modal.data.date || null;
+                      setHistory(prev => (prev || []).filter(h => h.id !== modal.data.id));
+                      setModal({type:null});
+                    }, data: "Eliminare questo allenamento dalla cronologia?"})}
+                    className="py-4 bg-red-600 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 shadow-lg"
+                  >
+                    Elimina
+                  </button>
+                </div>
+
+                <p className="text-[9px] font-black uppercase text-white/20 tracking-widest text-center pt-2">
+                  Nota: l'eliminazione è definitiva (backup consigliato).
+                </p>
+              </div>
+            </div>
+          )}
+
+
+{/* MODAL CONFIRM */}
           {modal.type === 'confirm' && (
             <div className="fixed inset-0 z-[4000] bg-black/90 backdrop-blur-xl flex items-center justify-center p-8 view-animate">
               <div className="glass p-8 w-full max-w-xs space-y-6 text-center shadow-2xl border-white/10">
